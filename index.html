@@ -196,6 +196,7 @@
     .logo { width: min(calc(var(--t) * .42), 40px); height: min(calc(var(--t) * .42), 40px); }
     .name { font-size: clamp(10.5px, calc(var(--t) * .15), 11px); padding: 0 1px; }
     .group h2 { font-size: 10px; }
+    .key { display: none; }   /* no room beside the logo; the keys still work */
   }
   @media (max-height: 460px) { .hints { display: none; } }
   @media (hover: none) and (pointer: coarse) {
@@ -264,7 +265,7 @@ var GROUPS = [
     { name: "CINESPHERE",           logo: "cinesphere.svg",      desc: "Film history as a rotating sphere of posters",          url: "https://cinesphere.amanclaude28.workers.dev/" }
   ]},
   { title: "watch", colour: "#7fa8f5", sites: [
-    { name: "The Doomsday Protocol", logo: "doomsday.png",       desc: "Marvel watch order before Avengers: Doomsday",          url: "https://claude28claude.github.io/whattowatchbeforedoomsday/" },
+    { name: "The Doomsday Protocol", short: "Doomsday Protocol", logo: "doomsday.png",       desc: "Marvel watch order before Avengers: Doomsday",          url: "https://claude28claude.github.io/whattowatchbeforedoomsday/" },
     { name: "Road to Secret Wars",  logo: "secret-wars.svg",     desc: "Battleworld and everything after Avengers: Doomsday",   url: "https://claude28claude.github.io/road-to-secret-wars/" },
     { name: "Road to Tomorrow",     logo: "road-to-tomorrow.png", desc: "DC watch order before Man of Tomorrow",                url: "https://claude28claude.github.io/road-to-tomorrow/" }
   ]},
