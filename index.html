@@ -19,9 +19,6 @@
     --accent: #7ee2a0;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --mono: ui-monospace, "Cascadia Mono", "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
-    --gap: clamp(8px, 1.1vw, 14px);
-    --cols: 6;
-    --rows: 3;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -76,36 +73,44 @@
   }
   .find input::placeholder { color: var(--faint); }
 
-  /* ---------- the grid: every site on one screen ---------- */
+  /* ---------- every site on one screen, grouped by kind ---------- */
   .stage {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
-    align-items: center;
     width: 100%;
     max-width: 1320px;
     margin: 0 auto;
     overflow: auto;       /* only ever used on a very short window */
   }
-  .grid {
+  /* --t is the size of one tile. The script picks the largest size at which
+     everything still fits the window, so nothing needs scrolling. */
+  .groups {
+    --t: 110px;
     width: 100%;
-    height: 100%;
-    max-height: calc(var(--rows) * 236px);
-    display: grid;
-    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-    grid-auto-rows: minmax(62px, 1fr);
-    gap: var(--gap);
+    margin: auto 0;       /* centred up-and-down when there is room to spare */
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(8px, 2.2vh, 20px) clamp(18px, 2.6vw, 38px);
   }
+  .group { max-width: 100%; display: flex; flex-direction: column; gap: clamp(4px, .9vh, 8px); }
+  .group h2 {
+    margin: 0;
+    font: 600 11px/1.3 var(--mono);
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--c);
+  }
+  .tiles { display: flex; flex-wrap: wrap; gap: clamp(6px, .8vw, 10px); }
   .tile {
-    --c: var(--accent);
-    container-type: size;
     position: relative;
-    min-width: 0; min-height: 0;
+    width: var(--t);
+    height: calc(var(--t) * .96);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: clamp(3px, 4cqh, 10px);
-    padding: 6px;
+    gap: calc(var(--t) * .07);
+    padding: 4px;
     border: 1px solid var(--line);
-    border-radius: clamp(10px, 1.4vw, 16px);
+    border-radius: calc(var(--t) * .13);
     background: var(--tile);
     color: inherit;
     text-decoration: none;
@@ -115,44 +120,36 @@
   }
   .logo {
     flex: none;
-    height: min(46cqh, 58cqw, 92px);
-    aspect-ratio: 1;
+    width: calc(var(--t) * .46);
+    height: calc(var(--t) * .46);
     border-radius: 23%;
     overflow: hidden;
     background: #14181d;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .45), 0 0 0 1px rgba(255, 255, 255, .06);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .35);
   }
   .logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .logo.pad img { padding: 14%; object-fit: contain; }
   .name {
+    flex: none;
     max-width: 100%;
-    padding: 0 4px;
-    font-weight: 600;
-    font-size: clamp(11.5px, 8.6cqh, 15px);
+    padding: 0 3px;
+    font-weight: 500;
+    font-size: clamp(10.5px, calc(var(--t) * .108), 13.5px);
     line-height: 1.2;
+    color: #dfe4e9;
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     overflow: hidden;
     overflow-wrap: anywhere;
   }
-  .cat {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--c);
-    opacity: .85;
-  }
   .key {
-    position: absolute; top: 7px; left: 7px;
-    min-width: 21px; height: 21px; padding: 0 5px;
+    position: absolute; top: 5px; left: 5px;
+    min-width: 18px; height: 18px; padding: 0 4px;
     display: grid; place-items: center;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, .07);
-    color: var(--dim);
-    font: 700 11.5px/1 var(--mono);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, .06);
+    color: var(--faint);
+    font: 700 10.5px/1 var(--mono);
   }
-  @container (max-height: 128px) { .cat { display: none; } }
-  @container (max-height: 96px)  { .key { top: 4px; left: 4px; min-width: 18px; height: 18px; font-size: 10.5px; } }
 
   .tile:hover, .tile.sel, .tile:focus-visible {
     background: var(--tile-hi);
@@ -187,10 +184,20 @@
     border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px;
   }
 
-  /* ---------- how many columns ---------- */
-  @media (max-width: 760px)  { :root { --cols: 4; } .brand p { display: none; } .hints { display: none; } }
-  @media (max-width: 520px)  { :root { --cols: 3; } .find input { font-size: 16px; } }
-  @media (max-height: 460px) and (min-width: 640px) { :root { --cols: 9; } .hints { display: none; } }
+  /* ---------- small windows ---------- */
+  @media (max-width: 760px)  { .brand p { display: none; } .hints { display: none; } }
+  /* Phones: four tiles across, and --t sets how tall each one is. */
+  @media (max-width: 560px) {
+    .find input { font-size: 16px; }
+    .groups { gap: clamp(6px, 1.4vh, 14px) 0; }
+    .group { width: 100%; }
+    .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .tile { width: auto; height: var(--t); gap: 3px; padding: 2px; border-radius: 10px; }
+    .logo { width: min(calc(var(--t) * .42), 40px); height: min(calc(var(--t) * .42), 40px); }
+    .name { font-size: clamp(10.5px, calc(var(--t) * .15), 11px); padding: 0 1px; }
+    .group h2 { font-size: 10px; }
+  }
+  @media (max-height: 460px) { .hints { display: none; } }
   @media (hover: none) and (pointer: coarse) {
     .key, .hints { display: none; }
   }
@@ -211,8 +218,8 @@
   </label>
 </header>
 
-<div class="stage">
-  <main class="grid" id="grid"></main>
+<div class="stage" id="stage">
+  <main class="groups" id="groups"></main>
 </div>
 
 <footer class="foot">
@@ -227,42 +234,51 @@
 
 <script>
 // ---------------------------------------------------------------------------
-// THE LIST. To add a site, add one line here and put its logo in the "logos"
-// folder. Keys are handed out in order: 1-9 first, then a, b, c ... so add new
-// sites at the END to keep everyone else's key the same.
+// THE LIST. To add a site, add one line under the group it belongs to and put
+// its logo in the "logos" folder. Keys are handed out in the order shown:
+// 1-9 first, then a, b, c ...
 // ---------------------------------------------------------------------------
-var CATS = {
-  study: "#e8b657",
-  read:  "#5fd0c0",
-  play:  "#f0839a",
-  watch: "#7fa8f5",
-  tools: "#b79cf2"
-};
-
-var SITES = [
-  { name: "The Article Machine",  cat: "study", logo: "article-machine.png", desc: "Ten SSC subjects, topic by topic, with daily sets",     url: "https://claude28claude.github.io/article-machine/" },
-  { name: "The Answer Key",       cat: "study", logo: "answer-key.png",      desc: "SSC facts and MCQs across eleven subjects",             url: "https://claude28claude.github.io/answer-key/" },
-  { name: "The DSSSB Key",        cat: "study", logo: "dsssb-key.png",       desc: "DSSSB previous-year GK questions, tap to reveal",       url: "https://claude28claude.github.io/dsssb-key/" },
-  { name: "The EPFO Key",         cat: "study", logo: "epfo-key.png",        desc: "UPSC EPFO, all nine syllabus heads",                    url: "https://claude28claude.github.io/epfo-key/" },
-  { name: "DUSIB Patwari Prep",   cat: "study", logo: "patwari.png",         desc: "Delhi Acts, computer knowledge, MCQs and a timed mock", url: "https://claude28claude.github.io/pa/" },
-  { name: "Study Desk",           cat: "study", logo: "study-desk.svg", pad: true, desc: "A private notes library that stays in your browser", url: "https://claude28claude.github.io/study-desk/" },
-  { name: "Forty Days of Python", cat: "study", logo: "python.png",          desc: "Beginner Python course, runs in the browser",           url: "https://claude28claude.github.io/forty-days-of-python/" },
-  { name: "Numberscape",          cat: "read",  logo: "numberscape.png",     desc: "The world, drawn to scale",                             url: "https://claude28claude.github.io/numberscape/" },
-  { name: "The Tilt",             cat: "read",  logo: "the-tilt.png",        desc: "Feminism and gender inequality, in sourced data",       url: "https://claude28claude.github.io/the-tilt/" },
-  { name: "The Kettle",           cat: "read",  logo: "the-kettle.svg",      desc: "Interactive essays, computed live as you read",         url: "https://claude28claude.github.io/the-kettle/" },
-  { name: "The Grain",            cat: "read",  logo: "the-grain.png",       desc: "A profile of how you actually decide",                  url: "https://claude28claude.github.io/the-grain/" },
-  { name: "idle.zone",            cat: "play",  logo: "idle-zone.svg",       desc: "A pile of small web toys",                              url: "https://claude28claude.github.io/idle-zone/" },
-  { name: "Museum of Dead Interfaces", cat: "play", logo: "dead-interfaces.svg", desc: "Twelve dead interfaces, rebuilt and working",       url: "https://claude28claude.github.io/dead-interfaces/" },
-  { name: "CINESPHERE",           cat: "play",  logo: "cinesphere.svg",      desc: "Film history as a rotating sphere of posters",          url: "https://cinesphere.amanclaude28.workers.dev/" },
-  { name: "The Doomsday Protocol", cat: "watch", logo: "doomsday.png",       desc: "Marvel watch order before Avengers: Doomsday",          url: "https://claude28claude.github.io/whattowatchbeforedoomsday/" },
-  { name: "Road to Tomorrow",     cat: "watch", logo: "road-to-tomorrow.png", desc: "DC watch order before Man of Tomorrow",                url: "https://claude28claude.github.io/road-to-tomorrow/" },
-  { name: "On Device",            cat: "tools", logo: "on-device.svg",       desc: "File tools that never upload anything",                 url: "https://claude28claude.github.io/on-device/" },
-  { name: "Photogram",            cat: "tools", logo: "photogram.png",       desc: "Minimalist photo sharing",                              url: "https://photogram-app-5e3q8j.web.app/" }
+var GROUPS = [
+  { title: "exam prep", colour: "#e8b657", sites: [
+    { name: "The Article Machine",  logo: "article-machine.png", desc: "Ten SSC subjects, topic by topic, with daily sets",     url: "https://claude28claude.github.io/article-machine/" },
+    { name: "The Answer Key",       logo: "answer-key.svg",      desc: "SSC facts and MCQs across eleven subjects",             url: "https://claude28claude.github.io/answer-key/" },
+    { name: "The DSSSB Key",        logo: "dsssb-key.png",       desc: "DSSSB previous-year GK questions, tap to reveal",       url: "https://claude28claude.github.io/dsssb-key/" },
+    { name: "The EPFO Key",         logo: "epfo-key.svg",        desc: "UPSC EPFO, all nine syllabus heads",                    url: "https://claude28claude.github.io/epfo-key/" },
+    { name: "DUSIB Patwari Prep",   logo: "patwari.png",         desc: "Delhi Acts, computer knowledge, MCQs and a timed mock", url: "https://claude28claude.github.io/pa/" }
+  ]},
+  { title: "learn", colour: "#86d68a", sites: [
+    { name: "Forty Days of Python", logo: "python.svg",          desc: "Beginner Python course, runs in the browser",           url: "https://claude28claude.github.io/forty-days-of-python/" },
+    { name: "TypingLab",            logo: "typinglab.svg",       desc: "Touch-typing course with timed tests",                  url: "https://claude28claude.github.io/typinglab/" },
+    { name: "Study Desk",           logo: "study-desk.svg", pad: true, desc: "A private notes library that stays in your browser", url: "https://claude28claude.github.io/study-desk/" },
+    { name: "Study Reader",         logo: "study-reader.svg",    desc: "Read PDFs with highlights and notes, all in your browser", url: "https://claude28claude.github.io/study-reader/" }
+  ]},
+  { title: "read", colour: "#5fd0c0", sites: [
+    { name: "Numberscape",          logo: "numberscape.png",     desc: "The world, drawn to scale",                             url: "https://claude28claude.github.io/numberscape/" },
+    { name: "The Tilt",             logo: "the-tilt.png",        desc: "Feminism and gender inequality, in sourced data",       url: "https://claude28claude.github.io/the-tilt/" },
+    { name: "The Kettle",           logo: "the-kettle.svg",      desc: "Interactive essays, computed live as you read",         url: "https://claude28claude.github.io/the-kettle/" },
+    { name: "The Grain",            logo: "the-grain.png",       desc: "A profile of how you actually decide",                  url: "https://claude28claude.github.io/the-grain/" }
+  ]},
+  { title: "play", colour: "#f0839a", sites: [
+    { name: "idle.zone",            logo: "idle-zone.svg",       desc: "A pile of small web toys",                              url: "https://claude28claude.github.io/idle-zone/" },
+    { name: "Museum of Dead Interfaces", short: "Dead Interfaces", logo: "dead-interfaces.svg", desc: "Twelve dead interfaces, rebuilt and working",      url: "https://claude28claude.github.io/dead-interfaces/" },
+    { name: "CINESPHERE",           logo: "cinesphere.svg",      desc: "Film history as a rotating sphere of posters",          url: "https://cinesphere.amanclaude28.workers.dev/" }
+  ]},
+  { title: "watch", colour: "#7fa8f5", sites: [
+    { name: "The Doomsday Protocol", logo: "doomsday.png",       desc: "Marvel watch order before Avengers: Doomsday",          url: "https://claude28claude.github.io/whattowatchbeforedoomsday/" },
+    { name: "Road to Secret Wars",  logo: "secret-wars.svg",     desc: "Battleworld and everything after Avengers: Doomsday",   url: "https://claude28claude.github.io/road-to-secret-wars/" },
+    { name: "Road to Tomorrow",     logo: "road-to-tomorrow.png", desc: "DC watch order before Man of Tomorrow",                url: "https://claude28claude.github.io/road-to-tomorrow/" }
+  ]},
+  { title: "tools & apps", colour: "#b79cf2", sites: [
+    { name: "On Device",            logo: "on-device.svg",       desc: "File tools that never upload anything",                 url: "https://claude28claude.github.io/on-device/" },
+    { name: "Photogram",            logo: "photogram.png",       desc: "Minimalist photo sharing",                              url: "https://photogram-app-5e3q8j.web.app/" },
+    { name: "Anchor",               logo: "anchor.svg",          desc: "A calm, photo-first social network",                    url: "https://anchor28.web.app/" }
+  ]}
 ];
 
 var KEYS = "123456789abcdefghijklmnopqrstuvwxyz";
 
-var grid = document.getElementById("grid");
+var stage = document.getElementById("stage");
+var groupsEl = document.getElementById("groups");
 var info = document.getElementById("info");
 var input = document.getElementById("q");
 
@@ -275,15 +291,14 @@ var selected = null; // the row picked with the arrow keys or search, or null
 var messageTimer = 0;
 var messageShowing = false;
 
-// Build one tile per site.
-SITES.forEach(function (site, i) {
-  var key = KEYS.charAt(i);
+// Build one labelled group per kind, and one tile per site inside it.
+function addTile(site, group, parent) {
+  var key = KEYS.charAt(rows.length);
   var a = document.createElement("a");
   a.className = "tile";
   a.href = site.url;
   a.target = "_blank";      // open in a new tab so this page stays put
   a.rel = "noopener";
-  a.style.setProperty("--c", CATS[site.cat]);
   a.setAttribute("aria-label", site.name + " — " + site.desc);
   if (key) a.setAttribute("aria-keyshortcuts", key);
 
@@ -298,13 +313,12 @@ SITES.forEach(function (site, i) {
   logo.appendChild(img);
 
   var n = document.createElement("span"); n.className = "name"; n.textContent = site.name;
-  var c = document.createElement("span"); c.className = "cat";  c.textContent = site.cat;
 
   if (key) a.appendChild(k);
-  a.appendChild(logo); a.appendChild(n); a.appendChild(c);
-  grid.appendChild(a);
+  a.appendChild(logo); a.appendChild(n);
+  parent.appendChild(a);
 
-  var row = { key: key, site: site, el: a };
+  var row = { key: key, site: site, group: group, el: a, nameEl: n };
   rows.push(row);
   if (key) byKey[key] = row;
 
@@ -312,21 +326,65 @@ SITES.forEach(function (site, i) {
   a.addEventListener("mouseleave", function () { describe(selected); });
   a.addEventListener("focus",      function () { describe(row); });
   a.addEventListener("click",      function () { say("Opened " + site.name + " in a new tab", "ok"); });
+}
+
+GROUPS.forEach(function (group) {
+  var section = document.createElement("section");
+  section.className = "group";
+  section.style.setProperty("--c", group.colour);
+  var heading = document.createElement("h2");
+  heading.textContent = group.title;
+  var tiles = document.createElement("div");
+  tiles.className = "tiles";
+  section.appendChild(heading);
+  section.appendChild(tiles);
+  groupsEl.appendChild(section);
+  group.sites.forEach(function (site) { addTile(site, group, tiles); });
 });
 
 document.getElementById("tagline").textContent =
   rows.length + " sites · press a key or click one · opens in a new tab";
 document.getElementById("lastkey").textContent = rows[rows.length - 1].key;
 
-// The grid fills the screen, so it needs to know how many rows it has.
-function columns() {
-  return getComputedStyle(grid).gridTemplateColumns.split(" ").length;
+// Pick the biggest tile size at which every group still fits the window, so
+// the whole list is visible at once. Runs again whenever the window changes.
+var phone = window.matchMedia("(max-width: 560px)");
+function fitsAt(size) {
+  groupsEl.style.paddingLeft = "0px";
+  groupsEl.style.setProperty("--t", size + "px");
+  return stage.scrollHeight <= stage.clientHeight + 1 && stage.scrollWidth <= stage.clientWidth + 1;
 }
-function fitRows() {
-  grid.style.setProperty("--rows", Math.ceil(rows.length / columns()));
+// Every line starts from the same left edge. This slides the whole block
+// sideways so the longest line sits in the middle of the window.
+function centre() {
+  var left = groupsEl.getBoundingClientRect().left, widest = 0;
+  rows.forEach(function (r) {
+    widest = Math.max(widest, r.el.getBoundingClientRect().right - left);
+  });
+  var spare = stage.clientWidth - widest;
+  groupsEl.style.paddingLeft = Math.max(0, Math.floor(spare / 2)) + "px";
 }
-fitRows();
-window.addEventListener("resize", fitRows);
+function fit() {
+  // On a phone the number is a tile's height; elsewhere it is its width.
+  // A phone tile is too narrow for the longest names, so those use a short form.
+  rows.forEach(function (r) {
+    r.nameEl.textContent = phone.matches && r.site.short ? r.site.short : r.site.name;
+  });
+  var SMALLEST = phone.matches ? 50 : 56;
+  var BIGGEST  = phone.matches ? 96 : 132;
+  if (!fitsAt(BIGGEST)) {
+    var lo = SMALLEST, hi = BIGGEST;     // lo is the best size known so far
+    while (hi - lo > 1) {
+      var mid = (lo + hi) >> 1;
+      if (fitsAt(mid)) lo = mid; else hi = mid;
+    }
+    fitsAt(lo); // on a very short window even the smallest may not fit; then it scrolls
+  }
+  centre();
+}
+fit();
+window.addEventListener("resize", fit);
+window.addEventListener("load", fit);
 
 // ---------- the line at the bottom ----------
 function describe(row) {
@@ -385,7 +443,7 @@ function searching() {
 function applyFilter() {
   var words = input.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
   rows.forEach(function (r) {
-    var hay = (r.site.name + " " + r.site.desc + " " + r.site.cat).toLowerCase();
+    var hay = (r.site.name + " " + r.site.desc + " " + r.group.title).toLowerCase();
     var hit = words.every(function (w) { return hay.indexOf(w) !== -1; });
     r.el.classList.toggle("off", !hit);
   });
@@ -402,20 +460,35 @@ function clearSearch() {
 input.addEventListener("input", applyFilter);
 
 // ---------- keyboard ----------
+function middle(row) {
+  var r = row.el.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height };
+}
+// Up and down: rows are different lengths, so jump to whichever tile in the
+// nearest row above (or below) sits closest to straight up (or down).
+function neighbour(from, dy, list) {
+  var here = middle(from), best = null, bestScore = Infinity;
+  list.forEach(function (r) {
+    var m = middle(r);
+    var gap = (m.y - here.y) * dy;            // how far in the wanted direction
+    if (gap < here.h / 2) return;             // same row, or the wrong way
+    var score = gap * 4 + Math.abs(m.x - here.x);
+    if (score < bestScore) { bestScore = score; best = r; }
+  });
+  return best;
+}
 function move(dx, dy) {
   var list = matches();
   if (!list.length) return;
   var at = list.indexOf(selected);
   if (at === -1) { select(list[0]); return; }
-  var next;
   if (searching()) {
     // Only a few tiles are lit, so every arrow just steps to the next one.
-    next = (at + (dx + dy > 0 ? 1 : -1) + list.length) % list.length;
-  } else {
-    next = at + dx + dy * columns();
-    if (next < 0 || next >= list.length) return;
+    select(list[(at + (dx + dy > 0 ? 1 : -1) + list.length) % list.length]);
+    return;
   }
-  select(list[next]);
+  var next = dx ? list[at + dx] : neighbour(selected, dy, list);
+  if (next) select(next);
 }
 
 var ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
