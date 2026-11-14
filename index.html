@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>claude28 — every site, one key away</title>
+<title>claude28</title>
 <meta name="description" content="A terminal-style launcher. Press one key to open any of the sites.">
 <meta name="theme-color" content="#0b0e0c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e0c'/%3E%3Cpath d='M16 20l14 12-14 12' fill='none' stroke='%237ee2a0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M34 46h14' stroke='%237ee2a0' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -143,10 +143,10 @@
 <body>
 
 <main class="term">
-  <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>claude28 — sites</span></div>
+  <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>claude28</span></div>
   <div class="body">
     <p class="cmd"><b>visitor@claude28</b>:~$ <em>ls sites/</em></p>
-    <h1><strong id="count"></strong> sites. <span class="keys-only">Press the key shown to open one.</span><span class="touch-only">Tap one to open it.</span></h1>
+    <h1><strong id="count"></strong> sites. <span class="keys-only">Press its key or click its name — it opens in a new tab.</span><span class="touch-only">Tap one — it opens in a new tab.</span></h1>
     <div id="list"></div>
     <p class="none hidden" id="none">no site matches that — press Esc to clear</p>
     <p class="status" id="status" role="status" aria-live="polite"></p>
@@ -212,7 +212,6 @@ var input = document.getElementById("q");
 var rows = [];      // every site, in order: { key, site, el, groupEl }
 var byKey = {};     // key -> row
 var selected = -1;  // index into visibleRows(), or -1 for nothing
-var leaving = false;
 
 // Build the page from the list above.
 GROUPS.forEach(function (group) {
@@ -230,6 +229,9 @@ GROUPS.forEach(function (group) {
     var a = document.createElement("a");
     a.className = "row";
     a.href = site.url;
+    // Open in a new tab so this page stays put behind it.
+    a.target = "_blank";
+    a.rel = "noopener";
 
     var k = document.createElement("span"); k.className = "key";  k.textContent = key;
     var n = document.createElement("span"); n.className = "name"; n.textContent = site.name;
@@ -291,14 +293,23 @@ function clearSearch() {
   input.blur();
 }
 
+var flashTimer = 0;
+
+// Opens the site in a new tab. This page stays open, so the next key press
+// works straight away with no need to come back first.
 function openRow(row) {
-  if (leaving) return;
-  leaving = true;
-  rows.forEach(function (r) { r.el.classList.remove("sel"); });
+  var tab = window.open(row.site.url, "_blank");
+  rows.forEach(function (r) { r.el.classList.remove("go"); });
+  if (!tab) {
+    // The browser refused to open a tab. Say so rather than look like it worked.
+    statusEl.textContent = "your browser blocked the new tab — click the name instead";
+    return;
+  }
+  tab.opener = null; // the opened site gets no handle back to this page
   row.el.classList.add("go");
-  statusEl.textContent = "opening " + row.site.name + " …";
-  // A short pause so the highlighted line is seen before the page changes.
-  setTimeout(function () { window.location.href = row.site.url; }, 140);
+  statusEl.textContent = "opened " + row.site.name + " in a new tab";
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(function () { row.el.classList.remove("go"); }, 1200);
 }
 
 // Phones have no "/" key to press, so the hint there says to tap instead.
@@ -361,13 +372,6 @@ document.addEventListener("keydown", function (e) {
   }
 });
 
-// Coming back with the Back button can restore this page frozen mid-"opening".
-// Reset it so the keys work again straight away.
-window.addEventListener("pageshow", function () {
-  leaving = false;
-  statusEl.textContent = "";
-  rows.forEach(function (r) { r.el.classList.remove("go"); });
-});
 </script>
 </body>
 </html>
