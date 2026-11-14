@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claude28 — every site, one key away</title>
+<meta name="description" content="A terminal-style launcher. Press one key to open any of the sites.">
+<meta name="theme-color" content="#0b0e0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b0e0c'/%3E%3Cpath d='M16 20l14 12-14 12' fill='none' stroke='%237ee2a0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M34 46h14' stroke='%237ee2a0' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0b0e0c;
+    --panel: #111512;
+    --line: #1f2621;
+    --text: #d4dcd5;
+    --dim: #7c887f;
+    --faint: #4b554e;
+    --accent: #7ee2a0;
+    --accent-ink: #06130b;
+    --warn: #e8c46a;
+    --mono: ui-monospace, "Cascadia Mono", "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    line-height: 1.5;
+    padding: 24px 16px 96px;
+  }
+  .term {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 12.5px;
+  }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); display: block; }
+  .bar span { margin-left: 8px; }
+  .body { padding: 18px 18px 8px; }
+  .cmd { color: var(--dim); margin: 0 0 4px; }
+  .cmd b { color: var(--accent); font-weight: 600; }
+  .cmd em { color: var(--text); font-style: normal; }
+  h1 { font-size: 15px; font-weight: 400; margin: 0 0 18px; color: var(--dim); }
+  h1 strong { color: var(--text); font-weight: 600; }
+
+  .group { margin: 0 0 14px; }
+  .group h2 {
+    font-size: 13px; font-weight: 400; margin: 0 0 2px;
+    color: var(--faint); letter-spacing: .02em;
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  a.row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 250px) minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: baseline;
+    padding: 5px 8px;
+    margin: 0 -8px;
+    border-radius: 6px;
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+  }
+  .key {
+    display: inline-block;
+    width: 28px;
+    text-align: center;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    color: var(--accent);
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  .name { color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+  .desc { color: var(--dim); overflow-wrap: anywhere; }
+  a.row:hover { background: #161c18; }
+  a.row.sel { background: #18211b; }
+  a.row.sel .key, a.row.go .key { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  a.row.sel .name::after { content: "  ←"; color: var(--accent); font-weight: 400; }
+  a.row.go { background: #1c2a21; }
+  a.row.go .name { color: var(--accent); }
+  .hidden { display: none !important; }
+  .none { color: var(--warn); margin: 4px 0 14px; }
+
+  .status { min-height: 1.5em; margin: 6px 0 0; color: var(--accent); }
+  .prompt {
+    display: flex; align-items: center; gap: 8px;
+    border-top: 1px solid var(--line);
+    padding: 12px 18px;
+  }
+  .prompt label { color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .prompt input {
+    flex: 1; min-width: 0;
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font: inherit; caret-color: var(--accent);
+    padding: 2px 0;
+  }
+  .prompt input::placeholder { color: var(--faint); }
+  .help {
+    max-width: 880px; margin: 14px auto 0; padding: 0 4px;
+    color: var(--faint); font-size: 13px;
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+  }
+  .help kbd {
+    font: inherit; color: var(--dim);
+    border: 1px solid var(--line); border-radius: 4px; padding: 0 5px;
+  }
+  .touch-only { display: none; }
+  @media (hover: none) and (pointer: coarse) {
+    .keys-only { display: none; }
+    .touch-only { display: inline; }
+  }
+  @media (max-width: 640px) {
+    body { font-size: 14.5px; padding: 12px 10px 80px; }
+    .body { padding: 14px 14px 6px; }
+    a.row { grid-template-columns: 34px minmax(0, 1fr); padding: 8px; }
+    .desc { grid-column: 2; font-size: 13px; }
+    .prompt { padding: 12px 14px; }
+    .prompt input { font-size: 16px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .cursor { animation: blink 1.1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  }
+  .cursor { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<main class="term">
+  <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>claude28 — sites</span></div>
+  <div class="body">
+    <p class="cmd"><b>visitor@claude28</b>:~$ <em>ls sites/</em></p>
+    <h1><strong id="count"></strong> sites. <span class="keys-only">Press the key shown to open one.</span><span class="touch-only">Tap one to open it.</span></h1>
+    <div id="list"></div>
+    <p class="none hidden" id="none">no site matches that — press Esc to clear</p>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </div>
+  <div class="prompt">
+    <label for="q">find &gt;</label>
+    <input id="q" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+           placeholder="press / to search by name" aria-label="Search sites by name">
+  </div>
+</main>
+
+<p class="help keys-only">
+  <span><kbd>1</kbd>–<kbd>9</kbd> <kbd>a</kbd>–<kbd id="lastkey">z</kbd> open a site</span>
+  <span><kbd>↑</kbd> <kbd>↓</kbd> then <kbd>Enter</kbd> pick from the list</span>
+  <span><kbd>/</kbd> search</span>
+  <span><kbd>Esc</kbd> clear</span>
+</p>
+
+<script>
+// ---------------------------------------------------------------------------
+// THE LIST. To add a site, add one line here. Keys are handed out in order:
+// 1-9 first, then a, b, c ... so existing sites keep their key if new ones
+// are added at the END of the list.
+// ---------------------------------------------------------------------------
+var GROUPS = [
+  { title: "study", sites: [
+    { name: "The Article Machine",  desc: "Ten SSC subjects, topic by topic, with daily sets",        url: "https://claude28claude.github.io/article-machine/" },
+    { name: "The Answer Key",       desc: "SSC facts and MCQs across eleven subjects",                url: "https://claude28claude.github.io/answer-key/" },
+    { name: "The DSSSB Key",        desc: "DSSSB previous-year GK questions, tap to reveal",          url: "https://claude28claude.github.io/dsssb-key/" },
+    { name: "The EPFO Key",         desc: "UPSC EPFO, all nine syllabus heads",                       url: "https://claude28claude.github.io/epfo-key/" },
+    { name: "DUSIB Patwari Prep",   desc: "Delhi Acts, computer knowledge, MCQs and a timed mock",    url: "https://claude28claude.github.io/pa/" },
+    { name: "Study Desk",           desc: "A private notes library that stays in your browser",       url: "https://claude28claude.github.io/study-desk/" },
+    { name: "Forty Days of Python", desc: "Beginner Python course, runs in the browser",              url: "https://claude28claude.github.io/forty-days-of-python/" }
+  ]},
+  { title: "read", sites: [
+    { name: "Numberscape",          desc: "The world, drawn to scale",                                url: "https://claude28claude.github.io/numberscape/" },
+    { name: "The Tilt",             desc: "Feminism and gender inequality, in sourced data",          url: "https://claude28claude.github.io/the-tilt/" },
+    { name: "The Kettle",           desc: "Interactive essays, computed live as you read",            url: "https://claude28claude.github.io/the-kettle/" },
+    { name: "The Grain",            desc: "A profile of how you actually decide",                     url: "https://claude28claude.github.io/the-grain/" }
+  ]},
+  { title: "play", sites: [
+    { name: "idle.zone",                 desc: "A pile of small web toys",                            url: "https://claude28claude.github.io/idle-zone/" },
+    { name: "Museum of Dead Interfaces", desc: "Twelve dead interfaces, rebuilt and working",         url: "https://claude28claude.github.io/dead-interfaces/" },
+    { name: "CINESPHERE",                desc: "Film history as a rotating sphere of posters",        url: "https://cinesphere.amanclaude28.workers.dev/" }
+  ]},
+  { title: "watch", sites: [
+    { name: "The Doomsday Protocol", desc: "Marvel watch order before Avengers: Doomsday",            url: "https://claude28claude.github.io/whattowatchbeforedoomsday/" },
+    { name: "Road to Tomorrow",      desc: "DC watch order before Man of Tomorrow",                   url: "https://claude28claude.github.io/road-to-tomorrow/" }
+  ]},
+  { title: "tools", sites: [
+    { name: "On Device",            desc: "File tools that never upload anything",                    url: "https://claude28claude.github.io/on-device/" },
+    { name: "Photogram",            desc: "Minimalist photo sharing",                                 url: "https://photogram-app-5e3q8j.web.app/" }
+  ]}
+];
+
+var KEYS = "123456789abcdefghijklmnopqrstuvwxyz";
+
+var listEl = document.getElementById("list");
+var statusEl = document.getElementById("status");
+var noneEl = document.getElementById("none");
+var input = document.getElementById("q");
+
+var rows = [];      // every site, in order: { key, site, el, groupEl }
+var byKey = {};     // key -> row
+var selected = -1;  // index into visibleRows(), or -1 for nothing
+var leaving = false;
+
+// Build the page from the list above.
+GROUPS.forEach(function (group) {
+  var section = document.createElement("section");
+  section.className = "group";
+  var heading = document.createElement("h2");
+  heading.textContent = "# " + group.title;
+  var ul = document.createElement("ul");
+  section.appendChild(heading);
+  section.appendChild(ul);
+
+  group.sites.forEach(function (site) {
+    var key = KEYS.charAt(rows.length);
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.className = "row";
+    a.href = site.url;
+
+    var k = document.createElement("span"); k.className = "key";  k.textContent = key;
+    var n = document.createElement("span"); n.className = "name"; n.textContent = site.name;
+    var d = document.createElement("span"); d.className = "desc"; d.textContent = site.desc;
+    a.appendChild(k); a.appendChild(n); a.appendChild(d);
+    a.setAttribute("aria-keyshortcuts", key);
+
+    li.appendChild(a);
+    ul.appendChild(li);
+
+    var row = { key: key, site: site, el: a, li: li, groupEl: section };
+    rows.push(row);
+    if (key) byKey[key] = row;
+  });
+
+  listEl.appendChild(section);
+});
+
+document.getElementById("count").textContent = rows.length;
+document.getElementById("lastkey").textContent = rows[rows.length - 1].key;
+
+function visibleRows() {
+  return rows.filter(function (r) { return !r.li.classList.contains("hidden"); });
+}
+
+function paintSelection() {
+  var vis = visibleRows();
+  rows.forEach(function (r) { r.el.classList.remove("sel"); });
+  if (selected >= vis.length) selected = vis.length - 1;
+  if (selected >= 0) {
+    vis[selected].el.classList.add("sel");
+    vis[selected].el.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function applyFilter() {
+  var words = input.value.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  rows.forEach(function (r) {
+    var hay = (r.site.name + " " + r.site.desc).toLowerCase();
+    var match = words.every(function (w) { return hay.indexOf(w) !== -1; });
+    r.li.classList.toggle("hidden", !match);
+  });
+  // Hide a group heading when nothing under it matches.
+  GROUPS.forEach(function (g, i) {
+    var section = listEl.children[i];
+    var any = section.querySelector("li:not(.hidden)");
+    section.classList.toggle("hidden", !any);
+  });
+  var vis = visibleRows();
+  noneEl.classList.toggle("hidden", vis.length > 0);
+  // While searching, the first match is the one Enter will open.
+  selected = (words.length && vis.length) ? 0 : -1;
+  paintSelection();
+}
+
+function clearSearch() {
+  input.value = "";
+  applyFilter();
+  input.blur();
+}
+
+function openRow(row) {
+  if (leaving) return;
+  leaving = true;
+  rows.forEach(function (r) { r.el.classList.remove("sel"); });
+  row.el.classList.add("go");
+  statusEl.textContent = "opening " + row.site.name + " …";
+  // A short pause so the highlighted line is seen before the page changes.
+  setTimeout(function () { window.location.href = row.site.url; }, 140);
+}
+
+// Phones have no "/" key to press, so the hint there says to tap instead.
+var isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+var restHint = isTouch ? "tap here to search by name" : "press / to search by name";
+input.placeholder = restHint;
+
+input.addEventListener("input", applyFilter);
+input.addEventListener("focus", function () { input.placeholder = "type a name, Enter opens the first match"; });
+input.addEventListener("blur",  function () { input.placeholder = restHint; });
+
+document.addEventListener("keydown", function (e) {
+  // Leave browser shortcuts (Ctrl+R, Alt+Left, Cmd+L ...) alone.
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  var typing = document.activeElement === input;
+  var vis;
+
+  if (e.key === "Escape") {
+    e.preventDefault();
+    clearSearch();
+    selected = -1;
+    paintSelection();
+    return;
+  }
+
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    vis = visibleRows();
+    if (!vis.length) return;
+    e.preventDefault();
+    if (e.key === "ArrowDown") selected = (selected + 1) % vis.length;
+    else selected = selected <= 0 ? vis.length - 1 : selected - 1;
+    paintSelection();
+    return;
+  }
+
+  if (e.key === "Enter") {
+    vis = visibleRows();
+    if (selected >= 0 && vis[selected]) {
+      e.preventDefault();
+      openRow(vis[selected]);
+    }
+    return;
+  }
+
+  // Everything below is the one-key shortcuts, which must not fire while
+  // the person is typing a search.
+  if (typing) return;
+
+  if (e.key === "/") {
+    e.preventDefault();
+    input.focus();
+    return;
+  }
+
+  var key = e.key.length === 1 ? e.key.toLowerCase() : "";
+  if (key && byKey[key]) {
+    e.preventDefault();
+    openRow(byKey[key]);
+  }
+});
+
+// Coming back with the Back button can restore this page frozen mid-"opening".
+// Reset it so the keys work again straight away.
+window.addEventListener("pageshow", function () {
+  leaving = false;
+  statusEl.textContent = "";
+  rows.forEach(function (r) { r.el.classList.remove("go"); });
+});
+</script>
+</body>
+</html>
