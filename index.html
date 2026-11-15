@@ -228,6 +228,41 @@
     border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px;
   }
 
+  /* ---------- long lists: tiles stay full size and the list scrolls ---------- */
+  .txt { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+  .desc { display: none; }
+  .groups.long { margin: 0; gap: 24px 0; padding-bottom: 14px; }
+  .groups.long .group { width: 100%; gap: 9px; }
+  .groups.long .tiles { gap: 10px; }
+  .groups.long .tile {
+    height: auto;
+    min-height: calc(var(--t) * .96);
+    padding: 12px 5px 9px;
+    justify-content: flex-start;
+  }
+  .groups.long .name { -webkit-line-clamp: 3; font-size: 13px; }
+
+  /* ---------- the pop-up that says what a site does ---------- */
+  .tip {
+    position: fixed; z-index: 10; left: 0; top: 0;
+    width: max-content;
+    max-width: min(300px, calc(100vw - 16px));
+    padding: 9px 12px 10px;
+    border: 1px solid var(--c, var(--line));
+    border-radius: 10px;
+    background: #171c22;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .55);
+    color: var(--dim);
+    font-size: 13px;
+    line-height: 1.4;
+    pointer-events: none;
+    opacity: 0; visibility: hidden;
+    transition: opacity .1s;
+  }
+  .tip.on { opacity: 1; visibility: visible; }
+  .tip b { display: block; margin-bottom: 2px; color: var(--text); font-weight: 600; }
+  .tip i { display: block; margin-top: 5px; font: 11.5px var(--mono); color: var(--c, var(--faint)); overflow-wrap: anywhere; }
+
   /* ---------- small windows ---------- */
   @media (max-width: 760px)  { .brand p { display: none; } .hints { display: none; } }
   /* Phones: four tiles across, and --t sets how tall each one is. */
@@ -244,10 +279,32 @@
     .name { font-size: clamp(10.5px, calc(var(--t) * .15), 11px); padding: 0 1px; }
     .group h2 { font-size: 10px; }
     .key { display: none; }   /* no room beside the logo; the keys still work */
+    /* A long list: three across, each tall enough for its whole name. */
+    .groups.long { gap: 18px 0; }
+    .groups.long .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .groups.long .tile { height: auto; min-height: var(--t); padding: 10px 3px 8px; gap: 6px; }
+    .groups.long .logo { width: 44px; height: 44px; }
+    .groups.long .name { font-size: 12px; }
   }
   @media (max-height: 460px) { .hints { display: none; } }
   @media (hover: none) and (pointer: coarse) {
-    .key, .hints { display: none; }
+    .key, .hints, .tip { display: none; }
+    /* A touch screen has no hover, so a long list is written out instead:
+       one site per line, with what it does beside it. */
+    .groups.long .tiles { display: grid; grid-template-columns: 1fr; gap: 7px; }
+    .groups.long .tile {
+      width: auto; min-height: 0;
+      flex-direction: row; align-items: center; justify-content: flex-start;
+      gap: 12px; padding: 10px 12px;
+      text-align: left;
+    }
+    .groups.long .logo { width: 44px; height: 44px; }
+    .groups.long .txt { flex: 1; align-items: flex-start; }
+    .groups.long .name { font-size: 14px; padding: 0; }
+    .groups.long .desc { display: block; margin-top: 2px; color: var(--dim); font-size: 12.5px; line-height: 1.35; }
+  }
+  @media (hover: none) and (pointer: coarse) and (min-width: 700px) {
+    .groups.long .tiles { grid-template-columns: 1fr 1fr; }
   }
 </style>
 </head>
@@ -271,10 +328,12 @@
   <main class="groups" id="groups"></main>
 </div>
 
+<div class="tip" id="tip" role="tooltip"></div>
+
 <footer class="foot">
   <p id="info" role="status" aria-live="polite"></p>
   <p class="hints" aria-hidden="true">
-    <span><kbd>1</kbd>–<kbd id="lastkey">z</kbd> open</span>
+    <span id="keyhint"><kbd>1</kbd>–<kbd id="lastkey">z</kbd> open</span>
     <span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> <kbd>Enter</kbd></span>
     <span><kbd>Space</kbd> switch list</span>
     <span><kbd>/</kbd> search</span>
@@ -326,66 +385,215 @@ var GROUPS = [
 ];
 
 // ---------------------------------------------------------------------------
-// THE SECOND LIST: sites OTHER people vibecoded (built mostly by telling an AI
-// what to make). Shown under "vibecoded web" in the top bar. Every address was
-// checked on 15 November 2026. These sites are not ours, so there is no logo
-// file: "icon" points at the site's own icon, and the initials show instead
-// if that ever stops loading.
+// THE OTHER TWO LISTS. These sites are not ours.
+//   VIBE - sites other people vibecoded (built mostly by telling an AI what to
+//          make): game-jam winners, the most-played entries, well-known makers.
+//   WEB  - interesting sites made the ordinary way, by people.
+// Every address was checked on 15 November 2026. There is no logo file for
+// these: "icon" points at the site's own icon, and the site's initials show
+// instead if that ever stops loading. "desc" is what appears on hover.
 // ---------------------------------------------------------------------------
 var VIBE = [
   { title: "game jam winners", colour: "#e8b657", sites: [
-    { name: "Capybaras Delivering Food", short: "Capybara Delivery", desc: "Gold, Vibe Jam 2026 ($25,000) — a cosy open world where capybaras stack fruit and deliver it", url: "https://capybara-vibejam26.leocoout.dev/" },
-    { name: "Fanto's Mega-Mart", icon: "https://fantos-megamart.vercel.app/favicon.png", desc: "Silver, Vibe Jam 2026 — rocket-speed shopping in a haunted grocery store", url: "https://fantos-megamart.vercel.app/" },
-    { name: "WenWare", icon: "https://wen-ware.com/assets/icons/icon-world.png", desc: "Bronze, Vibe Jam 2026, and its most-played game — guess the place AND the year of a 360° scene", url: "https://wen-ware.com/" },
-    { name: "The Great Taxi Assignment", short: "Great Taxi", desc: "Gold, Vibe Jam 2025 ($10,000) — drive a taxi around Vibe City", url: "https://great-taxi-assignment.netlify.app/" },
-    { name: "Vibeware", desc: "Silver, Vibe Jam 2025 — a rush of quick-fire microgames", url: "https://vibeware.vercel.app/" }
+    { name: "Capybaras Delivering Food", desc: "Gold, Vibe Jam 2026 ($25,000). A cosy open world where capybaras stack fruit into a wobbling tower and deliver it.", url: "https://capybara-vibejam26.leocoout.dev/" },
+    { name: "Fanto's Mega-Mart", icon: "https://fantos-megamart.vercel.app/favicon.png", desc: "Silver, Vibe Jam 2026. Rocket-speed shopping in a haunted grocery store.", url: "https://fantos-megamart.vercel.app/" },
+    { name: "WenWare", icon: "https://wen-ware.com/assets/icons/icon-world.png", desc: "Bronze, Vibe Jam 2026, and its most-played game. You stand inside a 360° historical scene and guess both the place and the year.", url: "https://wen-ware.com/" },
+    { name: "The Great Taxi Assignment", desc: "Gold, Vibe Jam 2025 ($10,000). Drive a taxi around Vibe City picking up fares.", url: "https://great-taxi-assignment.netlify.app/" },
+    { name: "Vibeware", desc: "Silver, Vibe Jam 2025. A rush of quick-fire microgames, one after another.", url: "https://vibeware.vercel.app/" }
   ]},
   { title: "fly, drive, race", colour: "#7fa8f5", sites: [
-    { name: "fly.pieter.com", mono: "FLY", icon: "https://fly.pieter.com/assets/fly_emoji.png", desc: "The multiplayer flight simulator by Pieter Levels that set off the vibecoded-game craze", url: "https://fly.pieter.com/" },
-    { name: "DroneSim", icon: "https://dronesim.com/assets/drone.svg", desc: "An FPV drone simulator, also by Pieter Levels", url: "https://dronesim.com/" },
-    { name: "FULL SEND", icon: "https://fullsend.game/favicon.svg", desc: "A 2D racer that loads in two seconds — second most-played game of Vibe Jam 2026", url: "https://fullsend.game/" },
-    { name: "Stoke Slopes", desc: "Multiplayer arcade skiing: pick a slope and race downhill", url: "https://stokeslopes.com/" },
-    { name: "Sim Drive", icon: "https://simdrive.xyz/favicon.svg", desc: "Racing where your phone becomes the steering wheel", url: "https://simdrive.xyz/" },
-    { name: "Slingshot", icon: "https://slingshot.indiega.me/favicon.svg", desc: "Use the planets' gravity to sling yourself out of the solar system", url: "https://slingshot.indiega.me/" }
+    { name: "fly.pieter.com", mono: "FLY", icon: "https://fly.pieter.com/assets/fly_emoji.png", desc: "The multiplayer flight simulator by Pieter Levels that set off the vibecoded-game craze.", url: "https://fly.pieter.com/" },
+    { name: "DroneSim", icon: "https://dronesim.com/assets/drone.svg?v=2", desc: "An FPV drone simulator, also by Pieter Levels.", url: "https://dronesim.com/" },
+    { name: "FULL SEND", icon: "https://fullsend.game/favicon.svg?v=c205df89b0eec8c1fb9d396e3c54e32ec945fd06", desc: "A 2D racer that loads in two seconds. Second most-played game of Vibe Jam 2026.", url: "https://fullsend.game/" },
+    { name: "Stoke Slopes", desc: "Multiplayer arcade skiing: start in the lodge, pick a slope and race downhill.", url: "https://stokeslopes.com/" },
+    { name: "Sim Drive", icon: "https://simdrive.xyz/favicon.svg", desc: "A racing simulator where your phone becomes the steering wheel.", url: "https://simdrive.xyz/" },
+    { name: "Slingshot", icon: "https://slingshot.indiega.me/favicon.svg", desc: "Use the planets' gravity to sling yourself out of the solar system.", url: "https://slingshot.indiega.me/" },
+    { name: "Demolition Derby", icon: "https://demolition-derby.xyz/brand/favicon.svg", desc: "You and a crowd of strangers ram cars into each other in a dusty arena.", url: "https://demolition-derby.xyz/" },
+    { name: "Blocky Pursuit", desc: "Outrun the police through a city made of blocks.", url: "https://blocky-pursuit.netlify.app/" },
+    { name: "Demolition Drive", desc: "Swing a wrecking ball and smash towers for a place on the leaderboard.", url: "https://tower-crusher.vercel.app/" },
+    { name: "DogFight Run", desc: "A fast arena shooter, but everyone is a spaceship.", url: "https://dogfight.run/" },
+    { name: "A Lost Star", icon: "https://aloststar.com/apple-touch-icon.png", desc: "Fly and dogfight over alien landscapes built from blocks.", url: "https://aloststar.com/" },
+    { name: "Sky Break", desc: "A high-speed runner where a hostile AI keeps sabotaging your escape.", url: "https://skybreak.xyz/" }
   ]},
-  { title: "worlds & battles", colour: "#f0839a", sites: [
-    { name: "Tiny Skies", desc: "A cosy little world to explore before its apocalypse arrives", url: "https://tinyskies.vercel.app/" },
-    { name: "Hollowlands", desc: "A multiplayer survival game with an endless world to build in", url: "https://hollowlands.andreelias.dev/" },
-    { name: "Eyrie", desc: "Drop-in co-op: catch spirits, feed the shrine, fight the obelisk", url: "https://playeyrie.com/" },
-    { name: "Undersphere", desc: "A multiplayer shooter played on the INSIDE of a sphere", url: "https://playundersphere.com/" },
-    { name: "Shards of Stone", icon: "https://www.shardsofstone.com/apple-touch-icon.png", desc: "A real-time strategy game in the browser, in the spirit of Warcraft 2 and 3", url: "https://shardsofstone.com/play" },
-    { name: "Spellwright", icon: "https://spellwright.xyz/favicon.svg", desc: "A wizard arena where you type a spell and an AI invents it", url: "https://spellwright.xyz/" },
-    { name: "Sunset City", icon: "https://sunset-city.didof.dev/apple-touch-icon.png", desc: "Climb to the Dark Tower without the guards seeing you", url: "https://sunset-city.didof.dev/" },
-    { name: "Swingers", desc: "Swing through a city with friends and see who breaks the most", url: "https://swing.offmylawn.com/" }
+  { title: "worlds & adventures", colour: "#86d68a", sites: [
+    { name: "Tiny Skies", desc: "A cosy little world to explore before its apocalypse arrives.", url: "https://tinyskies.vercel.app/" },
+    { name: "Hollowlands", desc: "A multiplayer survival game with an endless world to explore and build in.", url: "https://hollowlands.andreelias.dev/" },
+    { name: "Sunset City", icon: "https://sunset-city.didof.dev/apple-touch-icon.png", desc: "Climb your way to the Dark Tower without the guards seeing you.", url: "https://sunset-city.didof.dev/" },
+    { name: "Swingers", desc: "Swing through a city with friends and see who causes the most damage.", url: "https://swing.offmylawn.com/" },
+    { name: "Grand Quack Auto", icon: "https://grand-quack-auto.pages.dev/favicon.svg", desc: "A rubber duck with a honk button causes more and more chaos in an open city.", url: "https://grand-quack-auto.pages.dev/" },
+    { name: "Port Royal 1691", icon: "https://portroyal1691.vercel.app/icons/apple-touch-icon.png", desc: "Storm through the pirate city of Port Royal in 1691, wrecking everything in reach.", url: "https://portroyal1691.vercel.app/" },
+    { name: "Life is Binary", icon: "https://lifeisbinary.com/favicon.svg", desc: "A multiplayer pixel life sim: farm, trade and hustle through a small town.", url: "https://lifeisbinary.com/" },
+    { name: "IdleWorlds", desc: "An old-school text MMO where your character keeps levelling while you are away.", url: "https://idleworlds.com/" },
+    { name: "UP! with a stranger", icon: "https://upwithastranger.com/apple-touch-icon.png", desc: "You and a stranger are two blobs tied by a string. Climb together from a backyard to space.", url: "https://upwithastranger.com/" },
+    { name: "Vibe Miner", desc: "Dig straight down, fight what you find, and haul it back up for upgrades.", url: "https://www.vibe-miner.xyz/" },
+    { name: "Mouse Trouble", icon: "https://mouse.ryanfitzpatrick.io/assets/favicon-DJQ9DhCp.svg", desc: "You are the mouse: grab the loot and get out before the cat gets you.", url: "https://mouse.ryanfitzpatrick.io/" }
   ]},
-  { title: "puzzles & oddities", colour: "#5fd0c0", sites: [
-    { name: "Doomscroll", desc: "Doom, but you play it by scrolling", url: "https://gisnep.com/doomscroll/" },
-    { name: "SpaceWord", icon: "https://spaceword.org/icons/apple-touch-icon-180x180.png", desc: "A daily word game: pack 21 letters into the tightest square", url: "https://spaceword.org/" },
-    { name: "Piece Together", icon: "https://animated-puzzles.specr.net/icon.svg", desc: "Jigsaw puzzles whose pieces are moving pictures", url: "https://animated-puzzles.specr.net/" },
-    { name: "Exploding Hamsters", desc: "A puzzle game where the hamsters go boom", url: "https://explodinghamsters.com/" },
-    { name: "Dragonwake", desc: "A deep, hard roguelike drawn entirely in text characters", url: "https://kalineh.github.io/dragonwake-pages/" },
-    { name: "HALDANE-4", mono: "H4", icon: "https://haldane4.denisbondare.com/assets/favicon-Crf_K1js.svg", desc: "A short horror story told in text art, under the Antarctic ice", url: "https://haldane4.denisbondare.com/" }
+  { title: "battles & shooters", colour: "#f0839a", sites: [
+    { name: "Eyrie", desc: "Drop-in co-op: catch spirits, feed the shrine, fight the obelisk.", url: "https://playeyrie.com/" },
+    { name: "Undersphere", icon: "https://www.playundersphere.com/favicon.svg", desc: "A multiplayer shooter played on the INSIDE of a sphere, with gravity that shifts.", url: "https://playundersphere.com/" },
+    { name: "Shards of Stone", icon: "https://www.shardsofstone.com/apple-touch-icon.png", desc: "A real-time strategy game in the browser, in the spirit of Warcraft 2 and 3.", url: "https://shardsofstone.com/play" },
+    { name: "Spellwright", icon: "https://spellwright.xyz/favicon.svg", desc: "A wizard arena where you type a spell in words and an AI invents it.", url: "https://spellwright.xyz/" },
+    { name: "Metrocalypse", icon: "https://metrocalypse.online/apple-touch-icon.png", desc: "Zombie-shooting parkour in a shared world that never resets.", url: "https://metrocalypse.online/" },
+    { name: "Claude of Duty", icon: "https://www.claudeofduty.xyz/assets/cdn/apple-touch-icon.ae559f2f41.png", desc: "A tongue-in-cheek vibecoded take on a battle-royale shooter.", url: "https://www.claudeofduty.xyz/" },
+    { name: "Raveswords", icon: "https://fight.neets.fun/favicon.svg", desc: "Multiplayer medieval sword fighting in the browser.", url: "https://fight.neets.fun/" },
+    { name: "Burn Heroes", icon: "https://burnheroes.com/apple-touch-icon.png", desc: "A multiplayer bullet-heaven: survive swarms that fill the screen.", url: "https://burnheroes.com/" },
+    { name: "Rogue Lith", desc: "Sneak downwards through a stealth roguelike.", url: "https://roguelith.com/" },
+    { name: "Containment", desc: "Strangers across the internet all hit the same boss. When it dies, it comes back stronger.", url: "https://containment.daican.dev/" },
+    { name: "Node Control", icon: "https://nodecontrol.gg/apple-touch-icon.png", desc: "Fight other players for influence inside a neural network.", url: "https://nodecontrol.gg/" },
+    { name: "Slime Escape", icon: "https://slimeescape.com/images/icon-192.png", desc: "Survive ten waves of mutant slime, beat the boss, escape through a portal.", url: "https://slimeescape.com/portal" },
+    { name: "GRAVITON", desc: "Orbit a star and fire beams that bend around gravity wells.", url: "https://graviton-space.netlify.app/" },
+    { name: "Tower Survivors", desc: "Defend one tower against endless waves.", url: "https://ts.pliete.it/" }
+  ]},
+  { title: "puzzles & arcade", colour: "#5fd0c0", sites: [
+    { name: "Doomscroll", desc: "Doom, but you play it by scrolling.", url: "https://gisnep.com/doomscroll/" },
+    { name: "SpaceWord", icon: "https://spaceword.org/icons/apple-touch-icon-180x180.png", desc: "A daily word game: pack 21 letters into the tightest square you can.", url: "https://spaceword.org/" },
+    { name: "Piece Together", icon: "https://animated-puzzles.specr.net/icon.svg", desc: "Jigsaw puzzles whose pieces are moving pictures.", url: "https://animated-puzzles.specr.net/" },
+    { name: "Exploding Hamsters", desc: "A puzzle game where the hamsters go boom.", url: "https://explodinghamsters.com/" },
+    { name: "Dragonwake", desc: "A deep, hard roguelike drawn entirely in text characters.", url: "https://kalineh.github.io/dragonwake-pages/" },
+    { name: "HALDANE-4", mono: "H4", icon: "https://haldane4.denisbondare.com/assets/favicon-Crf_K1js.svg", desc: "A short horror story told in text art, set under the Antarctic ice.", url: "https://haldane4.denisbondare.com/" },
+    { name: "Duality", desc: "Steer two characters at once through two parallel worlds; one mirrors the other.", url: "https://duality-game-vibejam.vercel.app/" },
+    { name: "BeetleJump", desc: "Climb the beanstalk to the top and become king.", url: "https://beetlejump.com/" },
+    { name: "Jump Ninja", icon: "https://jumpninja.fun/apple-touch-icon.png", desc: "A simple platformer: hold to charge, let go to jump.", url: "https://jumpninja.fun/" },
+    { name: "Sky Walker", desc: "Keep your balance on a tightrope above a neon city while storms push you about.", url: "https://sky-walker.xyz/" },
+    { name: "RPS Evolution", desc: "Rock-paper-scissors against other players, evolving as you win.", url: "https://rps-evolution.vercel.app/" },
+    { name: "Vibe Party", icon: "https://playvibeparty.com/apple-touch-icon.png", desc: "A silly party board game with quick minigames.", url: "https://playvibeparty.com/" },
+    { name: "ECO Guardian", desc: "Fight garbage monsters; answering environment quiz questions gives you power-ups.", url: "https://eco-guardian-delta.vercel.app/" },
+    { name: "MRR Clicker Inc.", icon: "https://mrrclickerinc.com/favicon.svg", desc: "An idle clicker game disguised as a company's revenue dashboard.", url: "https://mrrclickerinc.com/" },
+    { name: "VibeInc", icon: "https://cadostropia.github.io/VibeInc/favicon.svg", desc: "A tycoon game where you run a vibe-coding studio through bugs and hype.", url: "https://cadostropia.github.io/VibeInc" }
   ]},
   { title: "tools & sites", colour: "#b79cf2", sites: [
-    { name: "Simon Willison's Tools", short: "Simon's Tools", desc: "Hundreds of small single-page tools, each kept with the prompts that made it", url: "https://tools.simonwillison.net/" },
-    { name: "MenuGen", desc: "Photograph a menu, get a picture of every dish — by Andrej Karpathy, who coined 'vibe coding'", url: "https://www.menugen.app/" },
-    { name: "HN Time Capsule", desc: "Ten-year-old Hacker News discussions, graded by an AI with hindsight — also Karpathy's", url: "https://karpathy.ai/hncapsule/" },
-    { name: "HN Slop", icon: "https://www.josh.ing/hnslop/y18.svg", desc: "A parody Hacker News that invents a startup from today's front page", url: "https://www.josh.ing/hn-slop" },
-    { name: "Lobsters Graph", icon: "https://alexjacobs08.github.io/lobsters-graph/favicon.svg", desc: "Who invited whom: the whole invite tree of a website, as one graph", url: "https://alexjacobs08.github.io/lobsters-graph/" },
-    { name: "Tireless Club", icon: "https://www.skidmarks.club/icon0.svg", desc: "Indoor cycling rides, built by one person to replace a Peloton subscription", url: "https://skidmarks.club/" },
-    { name: "Refetch", icon: "https://refetch.io/icons/apple-touch-icon.png", desc: "A Hacker News alternative, described as 100% vibecoded", url: "https://refetch.io/" },
-    { name: "vibe-coded.lol", mono: "LOL", desc: "A joke: the exact same page every AI builds (strong language)", url: "https://vibe-coded.lol/" }
+    { name: "Simon Willison's Tools", desc: "Hundreds of small single-page tools, each kept alongside the prompts that made it.", url: "https://tools.simonwillison.net/" },
+    { name: "LLM Prices", desc: "A calculator comparing what each AI model costs to use. Also by Simon Willison.", url: "https://www.llm-prices.com/" },
+    { name: "MenuGen", desc: "Photograph a restaurant menu and get a picture of every dish. By Andrej Karpathy, who coined the phrase 'vibe coding'.", url: "https://www.menugen.app/" },
+    { name: "HN Time Capsule", desc: "Ten-year-old Hacker News discussions, graded by an AI with the benefit of hindsight. Also Karpathy's.", url: "https://karpathy.ai/hncapsule/" },
+    { name: "HN Slop", icon: "https://www.josh.ing/hnslop/y18.svg", desc: "A parody Hacker News that invents a startup from today's front page.", url: "https://www.josh.ing/hn-slop" },
+    { name: "Lobsters Graph", icon: "https://alexjacobs08.github.io/lobsters-graph/favicon.svg", desc: "Who invited whom: the entire invite tree of a website, drawn as one graph.", url: "https://alexjacobs08.github.io/lobsters-graph/" },
+    { name: "Tireless Club", icon: "https://www.skidmarks.club/icon0.svg?icon0.c0338bdc.svg", desc: "Indoor cycling rides, built by one person to replace a Peloton subscription.", url: "https://skidmarks.club/" },
+    { name: "Refetch", icon: "https://refetch.io/icons/apple-touch-icon.png", desc: "A tech-news site like Hacker News, described as 100% vibecoded.", url: "https://refetch.io/" },
+    { name: "Don't Tell Me the Score", desc: "Tells you whether a recorded match is worth watching, without spoiling the result. Built by a father and son.", url: "https://www.donttellmethescore.com/nfl" },
+    { name: "Screenshot2Charts", icon: "https://screenshot2charts.com/favicon.svg", desc: "Turns a screenshot of a messy chart into a clean one you can edit.", url: "https://screenshot2charts.com/" },
+    { name: "Aldi Prices", icon: "https://aldi-prices.lawruk.com/favicon.svg", desc: "One person's grocery receipts tracked over time, to see real price inflation.", url: "https://aldi-prices.lawruk.com/" },
+    { name: "vibe-coded.lol", mono: "LOL", desc: "A joke: the exact same page every AI builds. Strong language.", url: "https://vibe-coded.lol/" }
   ]},
-  { title: "thousands more", colour: "#86d68a", sites: [
-    { name: "Vibe Jam 2026", icon: "https://vibejam.com/2026/img/favicon-cursor.svg", desc: "Every entry to the 2026 jam — about two thousand browser games, each at least 90% AI-written", url: "https://vibejam.com/" },
-    { name: "Vibe Coding Showcase", short: "Showcase", desc: "A gallery of apps and sites people have vibecoded", url: "https://vibecodingshowcase.com/" }
+  { title: "thousands more", colour: "#e8b657", sites: [
+    { name: "Vibe Jam 2026", icon: "https://vibejam.com/2026/img/favicon-cursor.svg?v=1775910233", desc: "Every entry to the 2026 jam: about two thousand browser games, each at least 90% AI-written.", url: "https://vibejam.com/" },
+    { name: "Vibe Coding Showcase", desc: "A gallery of apps and sites people have vibecoded.", url: "https://vibecodingshowcase.com/" },
+    { name: "Arcade Gaming", desc: "A small browser arcade of quick games for a short break.", url: "https://arcadegaming.app/" },
+    { name: "The Vibe Metaverse", desc: "A 3D lobby you walk around with friends to step into vibecoded games.", url: "https://www.thevibemetaverse.com/" }
   ]}
 ];
 
-// The two lists the top bar switches between.
+var WEB = [
+  { title: "toys to poke at", colour: "#f0839a", sites: [
+    { name: "neal.fun", desc: "The best toy box on the web: Infinite Craft, The Deep Sea, Spend Bill Gates' Money, The Password Game and dozens more.", url: "https://neal.fun/" },
+    { name: "The Useless Web", desc: "One button that throws you at a random pointless website.", url: "https://theuselessweb.com/" },
+    { name: "Pointer Pointer", desc: "Wherever you leave your mouse, it finds a photo of someone pointing at it.", url: "https://pointerpointer.com/" },
+    { name: "Patatap", desc: "Press any key: each one makes a sound and an animation. A keyboard turned into an instrument.", url: "https://patatap.com/" },
+    { name: "Silk", desc: "Drag the mouse to draw glowing, symmetrical silk patterns.", url: "http://weavesilk.com/" },
+    { name: "Quick, Draw!", icon: "https://quickdraw.withgoogle.com/static/favicon-196.png", desc: "You doodle, and a neural network tries to guess what it is within 20 seconds.", url: "https://quickdraw.withgoogle.com/" },
+    { name: "AutoDraw", icon: "https://www.autodraw.com/assets/images/favicon.png", desc: "Scribble roughly and it offers a clean drawing of what you meant.", url: "https://www.autodraw.com/" },
+    { name: "Sandspiel", icon: "https://sandspiel.club/assets/apple-touch-icon.png", desc: "A falling-sand sandbox: pour sand, water, fire, lava and plants and watch them react.", url: "https://sandspiel.club/" },
+    { name: "Thisissand", desc: "Pour coloured sand into layered pictures.", url: "https://thisissand.com/" },
+    { name: "Fluid Simulation", desc: "Drag across the screen to stir glowing coloured smoke.", url: "https://paveldogreat.github.io/WebGL-Fluid-Simulation/" },
+    { name: "Orb.Farm", desc: "A tiny sealed aquarium. Balance algae, fish and daylight so it survives.", url: "https://orb.farm/" },
+    { name: "Townscaper", desc: "Click on the sea and a charming little town builds itself.", url: "https://oskarstalberg.com/Townscaper/" },
+    { name: "Line Rider", desc: "Draw a track, press play, and a sledder rides it.", url: "https://www.linerider.com/" },
+    { name: "Blob Opera", icon: "https://www.gstatic.com/culturalinstitute/stella/android-chrome-192x192-v1.png", desc: "Four singing blobs. Drag them up and down to conduct an opera.", url: "https://artsandculture.google.com/experiment/blob-opera/AAHWrq360NcGbw" },
+    { name: "Incredibox", icon: "https://www.incredibox.com/img/touch-icon.png", desc: "Drag outfits onto beatboxers to build a song. The web demo is free.", url: "https://www.incredibox.com/" },
+    { name: "Chrome Music Lab", desc: "A dozen hands-on music toys: song maker, rhythm, arpeggios, sound waves.", url: "https://musiclab.chromeexperiments.com/" },
+    { name: "Experiments with Google", icon: "https://experiments.withgoogle.com/static/img/favicon.png", desc: "Thousands of art, music and AI experiments made with web technology.", url: "https://experiments.withgoogle.com/" }
+  ]},
+  { title: "games", colour: "#e8b657", sites: [
+    { name: "Little Alchemy 2", icon: "https://littlealchemy2.com/static/img/icon-256x256.png", desc: "Start with air, earth, fire and water; combine them to discover 700 things.", url: "https://littlealchemy2.com/" },
+    { name: "TimeGuessr", icon: "https://timeguessr.com/apple-touch-icon.png", desc: "You are shown an old photograph. Guess where and in which year it was taken.", url: "https://timeguessr.com/" },
+    { name: "GeoGuessr", icon: "https://www.geoguessr.com/apple-touch-icon.png", desc: "Dropped somewhere on Street View, work out where in the world you are. Free play is limited.", url: "https://www.geoguessr.com/" },
+    { name: "2048", icon: "https://play2048.co/faviconSimple.svg", desc: "Slide tiles and join matching numbers until you reach 2048.", url: "https://play2048.co/" },
+    { name: "Universal Paperclips", desc: "You are an AI told to make paperclips. It starts with one click and gets out of hand.", url: "https://www.decisionproblem.com/paperclips/" },
+    { name: "Cookie Clicker", desc: "Click a cookie. Buy grandmas. The original idle game.", url: "https://orteil.dashnet.org/cookieclicker/" },
+    { name: "ZType", desc: "A space shooter where you destroy ships by typing the words on them.", url: "https://zty.pe/" },
+    { name: "Monkeytype", icon: "https://monkeytype.com/images/favicon/apple-touch-icon.png", desc: "A clean, minimal typing test with detailed results.", url: "https://monkeytype.com/" },
+    { name: "Lichess", icon: "https://lichess.org/assets/logo/lichess-favicon.svg", desc: "Free chess with no ads: play, puzzles, lessons and analysis.", url: "https://lichess.org/" },
+    { name: "GeoFS", icon: "https://www.geo-fs.com/images/icons/apple-touch-icon.png", desc: "A free flight simulator that covers the whole real Earth from satellite images.", url: "https://www.geo-fs.com/" },
+    { name: "slow roads", icon: "https://slowroads.io/favicon.svg", desc: "An endless, peaceful drive through scenery that is generated as you go.", url: "https://slowroads.io/" },
+    { name: "Sporcle", icon: "https://www.sporcle.com/images/favicon-192x192.png", desc: "Thousands of trivia quizzes, such as naming every country against the clock.", url: "https://www.sporcle.com/" },
+    { name: "MS-DOS Games", icon: "https://archive.org/offshoot_assets/apple-touch-icon.png", desc: "Thousands of 1980s and 90s computer games, playable in the browser at the Internet Archive.", url: "https://archive.org/details/softwarelibrary_msdos_games" },
+    { name: "Bruno Simon", icon: "https://bruno-simon.com/favicons/favicon.svg", desc: "A designer's portfolio you explore by driving a toy car around it.", url: "https://bruno-simon.com/" }
+  ]},
+  { title: "earth & maps", colour: "#86d68a", sites: [
+    { name: "Radio Garden", icon: "https://radio.garden/icons/favicon.svg", desc: "Spin a globe and listen to live radio stations from any city on Earth.", url: "https://radio.garden/" },
+    { name: "WindowSwap", icon: "https://www.window-swap.com/assets/images/windowswaplogo.png", desc: "Look out of a stranger's window somewhere else in the world.", url: "https://www.window-swap.com/" },
+    { name: "earth.nullschool", icon: "https://earth.nullschool.net/apple-touch-icon-192x192.png", desc: "A live animated globe of the planet's winds, ocean currents and temperatures.", url: "https://earth.nullschool.net/" },
+    { name: "Windy", icon: "https://www.windy.com/img/favicon.png", desc: "A detailed live weather map: wind, rain, clouds, storms.", url: "https://www.windy.com/" },
+    { name: "Zoom Earth", desc: "Near-live satellite images of the Earth, with storms and fires tracked.", url: "https://zoom.earth/" },
+    { name: "Flightradar24", icon: "https://www.flightradar24.com/static/favicons/apple-icon-120x120.png?t=1759238391", desc: "Every aeroplane in the air right now, on a map.", url: "https://www.flightradar24.com/" },
+    { name: "LightningMaps", icon: "https://www.lightningmaps.org/Images/app_icon_shadow.png", desc: "Lightning strikes around the world, shown as they happen.", url: "https://lightningmaps.org/" },
+    { name: "River Runner", icon: "https://river-runner.samlearner.com/favicon.png", desc: "Drop a raindrop anywhere and follow its path downstream to the sea.", url: "https://river-runner.samlearner.com/" },
+    { name: "MapCrunch", desc: "Teleports you to a random Street View somewhere in the world.", url: "https://www.mapcrunch.com/" },
+    { name: "Drive & Listen", icon: "https://drivefromhome.com/wp-content/uploads/2021/03/cropped-drivenlisten-192x192.png", desc: "Ride through cities around the world while listening to their local radio.", url: "https://drivenlisten.com/" },
+    { name: "The True Size", desc: "Drag countries around the map to see how big they really are.", url: "https://www.thetruesize.com/" },
+    { name: "Ancient Earth", desc: "A globe showing where your city was 750 million years ago.", url: "https://dinosaurpictures.org/ancient-earth" },
+    { name: "OpenStreetMap", icon: "https://www.openstreetmap.org/assets/apple-touch-icon-120x120-c304991e604d1be82639709b96fb87f7b6b6688cc0d04d5f6141604259299648.png", desc: "The free map of the world, made by volunteers.", url: "https://www.openstreetmap.org/" }
+  ]},
+  { title: "space & scale", colour: "#7fa8f5", sites: [
+    { name: "Stellarium Web", icon: "https://stellarium.sfo2.cdn.digitaloceanspaces.com/stellarium-web/frontend-1.16.0/icon-180.png", desc: "A planetarium: the night sky as it looks from where you are, right now.", url: "https://stellarium-web.org/" },
+    { name: "NASA Eyes", icon: "https://eyes.nasa.gov/apps/solar-system/favicon-194x194.png", desc: "Fly around a live 3D solar system and follow real spacecraft.", url: "https://eyes.nasa.gov/apps/solar-system/" },
+    { name: "100,000 Stars", desc: "Zoom out from the Sun through a 3D map of the nearest hundred thousand stars.", url: "https://stars.chromeexperiments.com/" },
+    { name: "The Scale of the Universe", desc: "Slide from the smallest thing known to the whole universe.", url: "https://htwins.net/scale2/" },
+    { name: "If the Moon Were Only 1 Pixel", desc: "A map of the solar system at true scale. Scroll, and feel how empty space is.", url: "https://joshworth.com/dev/pixelspace/pixelspace_solarsystem.html" },
+    { name: "Astronomy Picture of the Day", mono: "AP", icon: "https://science.nasa.gov/wp-content/plugins/nasa-hds-core-setup/assets/favicons/apple-touch-icon-120x120.png", desc: "One space photograph every day since 1995, explained by an astronomer.", url: "https://apod.nasa.gov/apod/astropix.html" }
+  ]},
+  { title: "read & understand", colour: "#5fd0c0", sites: [
+    { name: "The Pudding", icon: "https://pudding.cool/apple-touch-icon.png", desc: "Visual essays that explain culture with data.", url: "https://pudding.cool/" },
+    { name: "Information is Beautiful", icon: "https://informationisbeautiful.net/apple-touch-icon.png", desc: "Big ideas and big numbers turned into striking charts.", url: "https://informationisbeautiful.net/" },
+    { name: "Our World in Data", icon: "https://ourworldindata.org/icon.svg", desc: "Charts on how the world is changing: health, poverty, energy, education.", url: "https://ourworldindata.org/" },
+    { name: "Gapminder Tools", icon: "https://www.gapminder.org/apple-touch-icon.png", desc: "The famous moving bubble chart: watch 200 years of income and life expectancy for every country.", url: "https://www.gapminder.org/tools/" },
+    { name: "Dollar Street", icon: "https://www.gapminder.org/dollar-street/static/favicons/apple-touch-icon.png", desc: "Photographs of homes from families around the world, lined up by income.", url: "https://www.gapminder.org/dollar-street" },
+    { name: "Wait But Why", desc: "Long, funny, stick-figure-illustrated explanations of big topics.", url: "https://waitbutwhy.com/" },
+    { name: "xkcd", icon: "https://xkcd.com/apple-touch-icon.png", desc: "The web comic of science, maths and language.", url: "https://xkcd.com/" },
+    { name: "What If?", desc: "Serious scientific answers to absurd questions.", url: "https://what-if.xkcd.com/" },
+    { name: "Bartosz Ciechanowski", mono: "BC", desc: "Astonishing interactive explanations of how things work: watches, engines, GPS, light.", url: "https://ciechanow.ski/" },
+    { name: "Explorable Explanations", desc: "A collection of explanations you learn from by playing with them.", url: "https://explorabl.es/" },
+    { name: "The Evolution of Trust", desc: "A half-hour game about why people trust each other, and why they stop.", url: "https://ncase.me/trust/" },
+    { name: "Nicky Case", desc: "More playable explanations: crowds, anxiety, voting, how to remember things.", url: "https://ncase.me/" },
+    { name: "Explained Visually", desc: "Maths and statistics ideas explained with pictures you can drag.", url: "https://setosa.io/ev/" },
+    { name: "Red Blob Games", icon: "https://www.redblobgames.com/apple-touch-icon.png", desc: "Interactive guides to the maths behind games: maps, paths, hexagon grids.", url: "https://www.redblobgames.com/" },
+    { name: "Histography", desc: "All of history as dots on a timeline, from the Big Bang to now.", url: "https://histography.io/" },
+    { name: "Atlas Obscura", icon: "https://img.atlasobscura.com/2qkRVagVffc_mgSh6SEWeb318Fx0xvtyxjgUes0K6j8/sm:1/scp:1/aHR0cHM6Ly9zMy5h/bWF6b25hd3MuY29t/L2F0bGFzLWRldi9t/aXNjL2ljb25zL2Fw/cGxlLXRvdWNoLWlj/b24tMTQ0eDE0NC1w/cmVjb21wb3NlZC5w/bmc", desc: "A guide to the world's strange and hidden places.", url: "https://www.atlasobscura.com/" },
+    { name: "The Public Domain Review", icon: "https://publicdomainreview.org/apple-icon-120x120.png", desc: "Curious old books, images and films that anyone is now free to use.", url: "https://publicdomainreview.org/" },
+    { name: "Project Gutenberg", icon: "https://www.gutenberg.org/apple-touch-icon.png", desc: "More than 70,000 free books whose copyright has expired.", url: "https://www.gutenberg.org/" },
+    { name: "Library of Babel", desc: "A library that contains every possible page of text, including this sentence.", url: "https://libraryofbabel.info/" },
+    { name: "Wayback Machine", desc: "See what any website looked like years ago.", url: "https://web.archive.org/" },
+    { name: "Worldometer", icon: "https://www.worldometers.info/apple-touch-icon.png", desc: "Live counters for world population, births, energy use and more.", url: "https://www.worldometers.info/" },
+    { name: "dhī", mono: "DH", desc: "Read and search the Rig-veda verse by verse, with word-by-word analysis.", url: "https://dhee.apratiratha.in/" }
+  ]},
+  { title: "sound & music", colour: "#b79cf2", sites: [
+    { name: "Every Noise at Once", desc: "A map of more than six thousand music genres. Click any one to hear it.", url: "https://everynoise.com/" },
+    { name: "Radiooooo", icon: "https://app.radiooooo.com/favicon.png", desc: "Pick a country and a decade, and hear what was playing there then.", url: "https://radiooooo.com/" },
+    { name: "Musicmap", icon: "https://musicmap.info/apple-touch-icon.png", desc: "The family tree of popular music genres, and how each grew from the last.", url: "https://musicmap.info/" },
+    { name: "Learning Music", desc: "Learn how beats, melodies and chords work by making them in the browser.", url: "https://learningmusic.ableton.com/" },
+    { name: "myNoise", icon: "https://mynoise.net/Pix/Favicon/favicon.svg", desc: "Background soundscapes you can mix yourself: rain, cafés, forests, white noise.", url: "https://mynoise.net/" },
+    { name: "A Soft Murmur", icon: "https://asoftmurmur.com/assets/icons/apple-touch-icon.png", desc: "Mix rain, thunder, waves and a fireplace into your own background sound.", url: "https://asoftmurmur.com/" },
+    { name: "Poolsuite", desc: "Summer music radio inside a retro 1990s desktop.", url: "https://poolsuite.net/" },
+    { name: "Listen to Wikipedia", desc: "Hear Wikipedia being edited live, as gentle bells and strings.", url: "http://listen.hatnote.com/" }
+  ]},
+  { title: "handy tools", colour: "#98a2ad", sites: [
+    { name: "Photopea", icon: "https://www.photopea.com/promo/icon512.png", desc: "A free Photoshop-style photo editor that runs in the browser.", url: "https://www.photopea.com/" },
+    { name: "Excalidraw", icon: "https://excalidraw.com/apple-touch-icon.png", desc: "A whiteboard for quick hand-drawn-looking diagrams.", url: "https://excalidraw.com/" },
+    { name: "tldraw", icon: "https://www.tldraw.com/favicon.svg", desc: "A very good free whiteboard.", url: "https://www.tldraw.com/" },
+    { name: "Squoosh", icon: "https://squoosh.app/c/icon-large-maskable-c2078ced.png", desc: "Shrink an image's file size and compare before and after.", url: "https://squoosh.app/" },
+    { name: "Hemingway Editor", desc: "Paste in your writing and it highlights the sentences that are hard to read.", url: "https://hemingwayapp.com/" },
+    { name: "Wolfram|Alpha", mono: "WA", desc: "Type a maths or factual question and it works out the answer.", url: "https://www.wolframalpha.com/" },
+    { name: "Desmos", icon: "https://www.desmos.com/assets/img/apps/graphing/apple-touch-icon.png", desc: "A graphing calculator: type an equation and see its curve.", url: "https://www.desmos.com/calculator" },
+    { name: "FutureMe", icon: "https://www.futureme.org/apple-touch-icon.png", desc: "Write a letter to yourself, to be delivered years from now.", url: "https://www.futureme.org/" }
+  ]}
+];
+
+// The lists the top bar switches between. A "long" list keeps its tiles at
+// full size and scrolls; the short one shrinks its tiles to fit one screen.
 var VIEWS = [
-  { id: "mine", label: "my sites",      hash: "",      groups: GROUPS, tagline: " sites · press a key or click one · opens in a new tab" },
-  { id: "vibe", label: "vibecoded web", hash: "#vibe", groups: VIBE,   tagline: " sites other people built with AI · opens in a new tab" }
+  { id: "mine", label: "my sites",    hash: "",      groups: GROUPS, long: false, tagline: " sites · press a key or click one · opens in a new tab" },
+  { id: "vibe", label: "vibecoded",   hash: "#vibe", groups: VIBE,   long: true,  tagline: " sites other people built with AI · hover to see what each one does" },
+  { id: "web",  label: "interesting", hash: "#web",  groups: WEB,    long: true,  tagline: " interesting sites made by people · hover to see what each one does" }
 ];
 
 var KEYS = "123456789abcdefghijklmnopqrstuvwxyz";
@@ -394,6 +602,7 @@ var stage = document.getElementById("stage");
 var groupsEl = document.getElementById("groups");
 var info = document.getElementById("info");
 var input = document.getElementById("q");
+var tipEl = document.getElementById("tip");
 
 var isTouch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 var restText = isTouch ? "Tap a site — it opens in a new tab." : "";
@@ -412,7 +621,8 @@ function initials(name) {
 
 // Build one labelled group per kind, and one tile per site inside it.
 function addTile(site, group, parent) {
-  var key = KEYS.charAt(rows.length);
+  // A long list has more sites than there are keys, so it has none at all.
+  var key = view.long ? "" : KEYS.charAt(rows.length);
   var a = document.createElement("a");
   a.className = "tile";
   a.href = site.url;
@@ -444,18 +654,22 @@ function addTile(site, group, parent) {
   }
 
   var n = document.createElement("span"); n.className = "name"; n.textContent = site.name;
+  var d = document.createElement("span"); d.className = "desc"; d.textContent = site.desc;
+  var txt = document.createElement("span"); txt.className = "txt";
+  txt.appendChild(n); txt.appendChild(d);
 
   if (key) a.appendChild(k);
-  a.appendChild(logo); a.appendChild(n);
+  a.appendChild(logo); a.appendChild(txt);
   parent.appendChild(a);
 
   var row = { key: key, site: site, group: group, el: a, nameEl: n };
   rows.push(row);
   if (key) byKey[key] = row;
 
-  a.addEventListener("mouseenter", function () { describe(row); });
-  a.addEventListener("mouseleave", function () { describe(selected); });
-  a.addEventListener("focus",      function () { describe(row); });
+  a.addEventListener("mouseenter", function () { describe(row); tip(row); });
+  a.addEventListener("mouseleave", function () { describe(selected); tip(null); });
+  a.addEventListener("focus",      function () { describe(row); tip(row); });
+  a.addEventListener("blur",       function () { tip(null); });
   a.addEventListener("click",      function () { say("Opened " + site.name + " in a new tab", "ok"); });
 }
 
@@ -466,8 +680,11 @@ var viewButtons = [];
 function show(next) {
   view = next;
   groupsEl.textContent = "";
+  groupsEl.classList.toggle("long", view.long);
   rows = []; byKey = {}; selected = null;
   input.value = "";
+  tip(null);
+  stage.scrollTop = 0;
   view.groups.forEach(function (group) {
     var section = document.createElement("section");
     section.className = "group";
@@ -485,6 +702,7 @@ function show(next) {
   var lastKey = "";
   rows.forEach(function (r) { if (r.key) lastKey = r.key; });
   document.getElementById("lastkey").textContent = lastKey;
+  document.getElementById("keyhint").hidden = !lastKey;
   viewButtons.forEach(function (b) {
     b.el.setAttribute("aria-pressed", b.view === view ? "true" : "false");
   });
@@ -537,6 +755,14 @@ function centre() {
   groupsEl.style.paddingLeft = Math.max(0, Math.floor(spare / 2)) + "px";
 }
 function fit() {
+  if (view.long) {
+    // A long list scrolls instead: full names, tiles at their full size.
+    rows.forEach(function (r) { r.nameEl.textContent = r.site.name; });
+    groupsEl.style.paddingLeft = "0px";
+    groupsEl.style.setProperty("--t", (phone.matches ? 104 : 118) + "px");
+    centre();
+    return;
+  }
   // On a phone the number is a tile's height; elsewhere it is its width.
   // A phone tile is too narrow for the longest names, so those use a short form.
   rows.forEach(function (r) {
@@ -575,10 +801,40 @@ function say(text, kind) {
   clearTimeout(messageTimer);
   messageTimer = setTimeout(function () { messageShowing = false; describe(selected); }, 2600);
 }
-// First draw: the list named in the address (#vibe), otherwise our own sites.
-show(location.hash === "#vibe" ? VIEWS[1] : VIEWS[0]);
+// ---------- the pop-up beside a tile ----------
+// Shows a site's name, what it does and its address, just under the tile
+// (or just above it when there is no room underneath).
+function tip(row) {
+  if (!row) { tipEl.classList.remove("on"); return; }
+  tipEl.textContent = "";
+  var b = document.createElement("b");
+  b.textContent = row.site.name;
+  var where = document.createElement("i");
+  where.textContent = row.site.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/.*$/, "");
+  tipEl.appendChild(b);
+  tipEl.appendChild(document.createTextNode(row.site.desc));
+  tipEl.appendChild(where);
+  tipEl.style.setProperty("--c", row.group.colour);
+  var r = row.el.getBoundingClientRect();
+  var w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  var x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
+  var y = r.bottom + 8;
+  if (y + h > window.innerHeight - 8) y = r.top - h - 8;
+  if (y < 8) y = 8;
+  tipEl.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
+  tipEl.classList.add("on");
+}
+stage.addEventListener("scroll", function () { tip(null); }, { passive: true });
+
+// First draw: the list named in the address (#vibe or #web), otherwise our own sites.
+function viewFromAddress() {
+  var found = VIEWS[0];
+  VIEWS.forEach(function (v) { if (v.hash && v.hash === location.hash) found = v; });
+  return found;
+}
+show(viewFromAddress());
 window.addEventListener("hashchange", function () {
-  var want = location.hash === "#vibe" ? VIEWS[1] : VIEWS[0];
+  var want = viewFromAddress();
   if (want !== view) show(want);
 });
 
@@ -591,6 +847,7 @@ function select(row) {
     row.el.scrollIntoView({ block: "nearest" });
   }
   describe(row);
+  tip(row);
 }
 
 var flashTimer = 0;
