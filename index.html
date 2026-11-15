@@ -51,6 +51,32 @@
     max-width: 1320px;
     margin: 0 auto;
   }
+  /* The switch between "my sites" and "vibecoded web". */
+  .views {
+    flex: none;
+    display: flex;
+    padding: 3px;
+    gap: 3px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--tile);
+  }
+  .views button {
+    appearance: none;
+    border: 0;
+    border-radius: 999px;
+    padding: 5px 13px;
+    background: transparent;
+    color: var(--dim);
+    font: 600 12.5px/1.3 var(--mono);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .views button:hover { color: var(--text); }
+  .views button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .views button[aria-pressed="true"] { background: var(--accent); color: #0b0d10; }
+  .views button i { font-style: normal; opacity: .6; margin-left: 5px; }
   .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex: 1; }
   .brand .mark { font-family: var(--mono); font-weight: 700; color: var(--accent); }
   .brand h1 { margin: 0; font-family: var(--mono); font-size: clamp(17px, 1.6vw, 21px); font-weight: 700; letter-spacing: -.01em; }
@@ -129,6 +155,24 @@
   }
   .logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .logo.pad img { padding: 14%; object-fit: contain; }
+  /* A site with no logo file of ours: its initials, and its own icon laid on
+     top once that has loaded. If the icon never arrives the initials stay. */
+  .logo.mono {
+    position: relative;
+    display: grid; place-items: center;
+    background: color-mix(in srgb, var(--c) 20%, #14181d);
+    color: var(--c);
+    font: 700 calc(var(--t) * .17)/1 var(--mono);
+    letter-spacing: .02em;
+  }
+  .logo.mono img {
+    position: absolute; inset: 0;
+    object-fit: contain;
+    background: #14181d;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .logo.mono.has img { opacity: 1; }
   .name {
     flex: none;
     max-width: 100%;
@@ -188,6 +232,9 @@
   @media (max-width: 760px)  { .brand p { display: none; } .hints { display: none; } }
   /* Phones: four tiles across, and --t sets how tall each one is. */
   @media (max-width: 560px) {
+    .top { flex-wrap: wrap; gap: 8px 12px; }
+    .views { order: 3; width: 100%; }
+    .views button { flex: 1; padding: 7px 8px; }
     .find input { font-size: 16px; }
     .groups { gap: clamp(6px, 1.4vh, 14px) 0; }
     .group { width: 100%; }
@@ -212,6 +259,7 @@
     <h1>claude28</h1>
     <p id="tagline"></p>
   </div>
+  <nav class="views" id="views" aria-label="Which list to show"></nav>
   <label class="find">
     <span aria-hidden="true">/</span>
     <input id="q" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
@@ -228,6 +276,7 @@
   <p class="hints" aria-hidden="true">
     <span><kbd>1</kbd>–<kbd id="lastkey">z</kbd> open</span>
     <span><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> <kbd>Enter</kbd></span>
+    <span><kbd>Space</kbd> switch list</span>
     <span><kbd>/</kbd> search</span>
     <span><kbd>Esc</kbd> clear</span>
   </p>
@@ -276,6 +325,69 @@ var GROUPS = [
   ]}
 ];
 
+// ---------------------------------------------------------------------------
+// THE SECOND LIST: sites OTHER people vibecoded (built mostly by telling an AI
+// what to make). Shown under "vibecoded web" in the top bar. Every address was
+// checked on 15 November 2026. These sites are not ours, so there is no logo
+// file: "icon" points at the site's own icon, and the initials show instead
+// if that ever stops loading.
+// ---------------------------------------------------------------------------
+var VIBE = [
+  { title: "game jam winners", colour: "#e8b657", sites: [
+    { name: "Capybaras Delivering Food", short: "Capybara Delivery", desc: "Gold, Vibe Jam 2026 ($25,000) — a cosy open world where capybaras stack fruit and deliver it", url: "https://capybara-vibejam26.leocoout.dev/" },
+    { name: "Fanto's Mega-Mart", icon: "https://fantos-megamart.vercel.app/favicon.png", desc: "Silver, Vibe Jam 2026 — rocket-speed shopping in a haunted grocery store", url: "https://fantos-megamart.vercel.app/" },
+    { name: "WenWare", icon: "https://wen-ware.com/assets/icons/icon-world.png", desc: "Bronze, Vibe Jam 2026, and its most-played game — guess the place AND the year of a 360° scene", url: "https://wen-ware.com/" },
+    { name: "The Great Taxi Assignment", short: "Great Taxi", desc: "Gold, Vibe Jam 2025 ($10,000) — drive a taxi around Vibe City", url: "https://great-taxi-assignment.netlify.app/" },
+    { name: "Vibeware", desc: "Silver, Vibe Jam 2025 — a rush of quick-fire microgames", url: "https://vibeware.vercel.app/" }
+  ]},
+  { title: "fly, drive, race", colour: "#7fa8f5", sites: [
+    { name: "fly.pieter.com", mono: "FLY", icon: "https://fly.pieter.com/assets/fly_emoji.png", desc: "The multiplayer flight simulator by Pieter Levels that set off the vibecoded-game craze", url: "https://fly.pieter.com/" },
+    { name: "DroneSim", icon: "https://dronesim.com/assets/drone.svg", desc: "An FPV drone simulator, also by Pieter Levels", url: "https://dronesim.com/" },
+    { name: "FULL SEND", icon: "https://fullsend.game/favicon.svg", desc: "A 2D racer that loads in two seconds — second most-played game of Vibe Jam 2026", url: "https://fullsend.game/" },
+    { name: "Stoke Slopes", desc: "Multiplayer arcade skiing: pick a slope and race downhill", url: "https://stokeslopes.com/" },
+    { name: "Sim Drive", icon: "https://simdrive.xyz/favicon.svg", desc: "Racing where your phone becomes the steering wheel", url: "https://simdrive.xyz/" },
+    { name: "Slingshot", icon: "https://slingshot.indiega.me/favicon.svg", desc: "Use the planets' gravity to sling yourself out of the solar system", url: "https://slingshot.indiega.me/" }
+  ]},
+  { title: "worlds & battles", colour: "#f0839a", sites: [
+    { name: "Tiny Skies", desc: "A cosy little world to explore before its apocalypse arrives", url: "https://tinyskies.vercel.app/" },
+    { name: "Hollowlands", desc: "A multiplayer survival game with an endless world to build in", url: "https://hollowlands.andreelias.dev/" },
+    { name: "Eyrie", desc: "Drop-in co-op: catch spirits, feed the shrine, fight the obelisk", url: "https://playeyrie.com/" },
+    { name: "Undersphere", desc: "A multiplayer shooter played on the INSIDE of a sphere", url: "https://playundersphere.com/" },
+    { name: "Shards of Stone", icon: "https://www.shardsofstone.com/apple-touch-icon.png", desc: "A real-time strategy game in the browser, in the spirit of Warcraft 2 and 3", url: "https://shardsofstone.com/play" },
+    { name: "Spellwright", icon: "https://spellwright.xyz/favicon.svg", desc: "A wizard arena where you type a spell and an AI invents it", url: "https://spellwright.xyz/" },
+    { name: "Sunset City", icon: "https://sunset-city.didof.dev/apple-touch-icon.png", desc: "Climb to the Dark Tower without the guards seeing you", url: "https://sunset-city.didof.dev/" },
+    { name: "Swingers", desc: "Swing through a city with friends and see who breaks the most", url: "https://swing.offmylawn.com/" }
+  ]},
+  { title: "puzzles & oddities", colour: "#5fd0c0", sites: [
+    { name: "Doomscroll", desc: "Doom, but you play it by scrolling", url: "https://gisnep.com/doomscroll/" },
+    { name: "SpaceWord", icon: "https://spaceword.org/icons/apple-touch-icon-180x180.png", desc: "A daily word game: pack 21 letters into the tightest square", url: "https://spaceword.org/" },
+    { name: "Piece Together", icon: "https://animated-puzzles.specr.net/icon.svg", desc: "Jigsaw puzzles whose pieces are moving pictures", url: "https://animated-puzzles.specr.net/" },
+    { name: "Exploding Hamsters", desc: "A puzzle game where the hamsters go boom", url: "https://explodinghamsters.com/" },
+    { name: "Dragonwake", desc: "A deep, hard roguelike drawn entirely in text characters", url: "https://kalineh.github.io/dragonwake-pages/" },
+    { name: "HALDANE-4", mono: "H4", icon: "https://haldane4.denisbondare.com/assets/favicon-Crf_K1js.svg", desc: "A short horror story told in text art, under the Antarctic ice", url: "https://haldane4.denisbondare.com/" }
+  ]},
+  { title: "tools & sites", colour: "#b79cf2", sites: [
+    { name: "Simon Willison's Tools", short: "Simon's Tools", desc: "Hundreds of small single-page tools, each kept with the prompts that made it", url: "https://tools.simonwillison.net/" },
+    { name: "MenuGen", desc: "Photograph a menu, get a picture of every dish — by Andrej Karpathy, who coined 'vibe coding'", url: "https://www.menugen.app/" },
+    { name: "HN Time Capsule", desc: "Ten-year-old Hacker News discussions, graded by an AI with hindsight — also Karpathy's", url: "https://karpathy.ai/hncapsule/" },
+    { name: "HN Slop", icon: "https://www.josh.ing/hnslop/y18.svg", desc: "A parody Hacker News that invents a startup from today's front page", url: "https://www.josh.ing/hn-slop" },
+    { name: "Lobsters Graph", icon: "https://alexjacobs08.github.io/lobsters-graph/favicon.svg", desc: "Who invited whom: the whole invite tree of a website, as one graph", url: "https://alexjacobs08.github.io/lobsters-graph/" },
+    { name: "Tireless Club", icon: "https://www.skidmarks.club/icon0.svg", desc: "Indoor cycling rides, built by one person to replace a Peloton subscription", url: "https://skidmarks.club/" },
+    { name: "Refetch", icon: "https://refetch.io/icons/apple-touch-icon.png", desc: "A Hacker News alternative, described as 100% vibecoded", url: "https://refetch.io/" },
+    { name: "vibe-coded.lol", mono: "LOL", desc: "A joke: the exact same page every AI builds (strong language)", url: "https://vibe-coded.lol/" }
+  ]},
+  { title: "thousands more", colour: "#86d68a", sites: [
+    { name: "Vibe Jam 2026", icon: "https://vibejam.com/2026/img/favicon-cursor.svg", desc: "Every entry to the 2026 jam — about two thousand browser games, each at least 90% AI-written", url: "https://vibejam.com/" },
+    { name: "Vibe Coding Showcase", short: "Showcase", desc: "A gallery of apps and sites people have vibecoded", url: "https://vibecodingshowcase.com/" }
+  ]}
+];
+
+// The two lists the top bar switches between.
+var VIEWS = [
+  { id: "mine", label: "my sites",      hash: "",      groups: GROUPS, tagline: " sites · press a key or click one · opens in a new tab" },
+  { id: "vibe", label: "vibecoded web", hash: "#vibe", groups: VIBE,   tagline: " sites other people built with AI · opens in a new tab" }
+];
+
 var KEYS = "123456789abcdefghijklmnopqrstuvwxyz";
 
 var stage = document.getElementById("stage");
@@ -291,6 +403,12 @@ var byKey = {};     // key -> row
 var selected = null; // the row picked with the arrow keys or search, or null
 var messageTimer = 0;
 var messageShowing = false;
+
+// "Stoke Slopes" -> "SS", "Vibeware" -> "V".
+function initials(name) {
+  var words = name.replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/);
+  return ((words[0] || "?").charAt(0) + (words[1] ? words[1].charAt(0) : "")).toUpperCase();
+}
 
 // Build one labelled group per kind, and one tile per site inside it.
 function addTile(site, group, parent) {
@@ -309,9 +427,21 @@ function addTile(site, group, parent) {
   var logo = document.createElement("span");
   logo.className = "logo" + (site.pad ? " pad" : "");
   var img = document.createElement("img");
-  img.src = "logos/" + site.logo;
   img.alt = "";
-  logo.appendChild(img);
+  if (site.logo) {
+    img.src = "logos/" + site.logo;
+    logo.appendChild(img);
+  } else {
+    logo.className = "logo mono";
+    logo.appendChild(document.createTextNode(site.mono || initials(site.name)));
+    if (site.icon) {
+      img.referrerPolicy = "no-referrer";
+      img.addEventListener("load",  function () { logo.classList.add("has"); });
+      img.addEventListener("error", function () { img.remove(); });
+      img.src = site.icon;
+      logo.appendChild(img);
+    }
+  }
 
   var n = document.createElement("span"); n.className = "name"; n.textContent = site.name;
 
@@ -329,23 +459,64 @@ function addTile(site, group, parent) {
   a.addEventListener("click",      function () { say("Opened " + site.name + " in a new tab", "ok"); });
 }
 
-GROUPS.forEach(function (group) {
-  var section = document.createElement("section");
-  section.className = "group";
-  section.style.setProperty("--c", group.colour);
-  var heading = document.createElement("h2");
-  heading.textContent = group.title;
-  var tiles = document.createElement("div");
-  tiles.className = "tiles";
-  section.appendChild(heading);
-  section.appendChild(tiles);
-  groupsEl.appendChild(section);
-  group.sites.forEach(function (site) { addTile(site, group, tiles); });
-});
+var view = null;          // the list on screen now
+var viewButtons = [];
 
-document.getElementById("tagline").textContent =
-  rows.length + " sites · press a key or click one · opens in a new tab";
-document.getElementById("lastkey").textContent = rows[rows.length - 1].key;
+// Empty the screen and draw one list: a labelled group per kind.
+function show(next) {
+  view = next;
+  groupsEl.textContent = "";
+  rows = []; byKey = {}; selected = null;
+  input.value = "";
+  view.groups.forEach(function (group) {
+    var section = document.createElement("section");
+    section.className = "group";
+    section.style.setProperty("--c", group.colour);
+    var heading = document.createElement("h2");
+    heading.textContent = group.title;
+    var tiles = document.createElement("div");
+    tiles.className = "tiles";
+    section.appendChild(heading);
+    section.appendChild(tiles);
+    groupsEl.appendChild(section);
+    group.sites.forEach(function (site) { addTile(site, group, tiles); });
+  });
+  document.getElementById("tagline").textContent = rows.length + view.tagline;
+  var lastKey = "";
+  rows.forEach(function (r) { if (r.key) lastKey = r.key; });
+  document.getElementById("lastkey").textContent = lastKey;
+  viewButtons.forEach(function (b) {
+    b.el.setAttribute("aria-pressed", b.view === view ? "true" : "false");
+  });
+  // Keep the address in step, so claude28.web.app/#vibe opens the second list.
+  if (location.hash !== view.hash) {
+    try { history.replaceState(null, "", view.hash || location.pathname + location.search); } catch (e) {}
+  }
+  describe(null);
+  fit();
+}
+function countSites(v) {
+  return v.groups.reduce(function (n, g) { return n + g.sites.length; }, 0);
+}
+VIEWS.forEach(function (v) {
+  var b = document.createElement("button");
+  b.type = "button";
+  b.textContent = v.label;
+  var n = document.createElement("i");
+  n.textContent = countSites(v);
+  b.appendChild(n);
+  b.addEventListener("click", function (e) {
+    if (view !== v) show(v);
+    // After a mouse click, let go of the button so Space and the site keys
+    // work straight away. (A click made from the keyboard keeps its place.)
+    if (e.detail > 0) b.blur();
+  });
+  document.getElementById("views").appendChild(b);
+  viewButtons.push({ el: b, view: v });
+});
+function otherView() {
+  show(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]);
+}
 
 // Pick the biggest tile size at which every group still fits the window, so
 // the whole list is visible at once. Runs again whenever the window changes.
@@ -383,7 +554,6 @@ function fit() {
   }
   centre();
 }
-fit();
 window.addEventListener("resize", fit);
 window.addEventListener("load", fit);
 
@@ -405,7 +575,12 @@ function say(text, kind) {
   clearTimeout(messageTimer);
   messageTimer = setTimeout(function () { messageShowing = false; describe(selected); }, 2600);
 }
-describe(null);
+// First draw: the list named in the address (#vibe), otherwise our own sites.
+show(location.hash === "#vibe" ? VIEWS[1] : VIEWS[0]);
+window.addEventListener("hashchange", function () {
+  var want = location.hash === "#vibe" ? VIEWS[1] : VIEWS[0];
+  if (want !== view) show(want);
+});
 
 // ---------- picking and opening ----------
 function select(row) {
@@ -529,6 +704,16 @@ document.addEventListener("keydown", function (e) {
   if (e.key === "/") {
     e.preventDefault();
     input.focus();
+    return;
+  }
+
+  // Space flips between the two lists. On a focused button or link, Space
+  // already means "press this", so leave it alone there.
+  if (e.key === " ") {
+    var tag = document.activeElement.tagName;
+    if (tag === "BUTTON" || tag === "A") return;
+    e.preventDefault();
+    otherView();
     return;
   }
 
