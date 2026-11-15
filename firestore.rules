@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Only one thing is stored: for each sync code, the list of sites removed from
+// the claude28 launcher. The code itself is the key - it is long and random,
+// so a list can only be read or changed by someone who has the code. Nobody
+// can list the codes, delete a list, or store anything else.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /launcherHidden/{code} {
+      allow get: if code.size() >= 20;
+      allow create, update: if code.size() >= 20
+        && request.resource.data.keys().hasOnly(['urls', 'updated'])
+        && request.resource.data.urls is list
+        && request.resource.data.urls.size() <= 2000
+        && request.resource.data.updated is timestamp;
+      allow list, delete: if false;
+    }
+  }
+}

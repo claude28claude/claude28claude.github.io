@@ -3,21 +3,35 @@
     "site": "claude28",
     "public": ".",
     "ignore": [
-      "firebase.json",
-      ".firebaserc",
       "**/.*",
       "**/.*/**",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      ".firebaserc",
+      "firebase.json",
+      "firestore.rules"
     ],
     "headers": [
       {
         "source": "/index.html",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       },
       {
         "source": "/",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
   }
 }

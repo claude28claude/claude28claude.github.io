@@ -236,6 +236,9 @@
   .editbar p { flex: 1; min-width: 200px; margin: 0; color: var(--dim); }
   .editbar b { color: #f0839a; }
   .editbar span { color: var(--faint); margin-left: 4px; }
+  .editbar em { font-style: normal; font-size: 12.5px; color: var(--faint); margin-left: 6px; white-space: nowrap; }
+  .editbar em.saved { color: var(--accent); }
+  .editbar em.offline { color: #f0a35e; }
   .editbar button {
     appearance: none;
     border: 1px solid var(--line); border-radius: 999px;
@@ -387,9 +390,10 @@
 </header>
 
 <div class="editbar" id="editbar" hidden>
-  <p><b>Editing.</b> Click any site to remove it from this list. <span id="editcount"></span></p>
+  <p><b>Editing.</b> Click any site to remove it from this list. <span id="editcount"></span> <em id="syncstate"></em></p>
   <button type="button" id="undo">undo</button>
   <button type="button" id="restore">restore all</button>
+  <button type="button" id="copylink" title="Open this link once on each of your other devices and they will share these removals">link my other devices</button>
 </div>
 
 <div class="stage" id="stage">
@@ -1024,7 +1028,101 @@ var editing = false;
 var undoStack = [];
 function saveHidden() {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(Object.keys(hidden))); } catch (e) {}
+  pushRemote();
 }
+
+// ---------- the same removals on every device ----------
+// The list is also kept online under a long random "sync code". Opening
+// claude28.web.app/?sync=CODE on another device (or the github.io address)
+// links that device to the same list. Without the code nobody can read or
+// change it. If the network is down the page keeps working from this
+// browser's copy and catches up next time.
+var SYNC_KEY = "claude28.sync";
+var DB = "https://firestore.googleapis.com/v1/projects/aman-sites-1709/databases/(default)/documents/launcherHidden/";
+var syncCode = "";
+var syncState = "";           // "", "saving", "saved", "offline"
+try { syncCode = localStorage.getItem(SYNC_KEY) || ""; } catch (e) {}
+(function takeCodeFromAddress() {
+  var m = /[?&]sync=([A-Za-z0-9]{20,64})/.exec(location.search);
+  if (!m) return;
+  syncCode = m[1];
+  try { localStorage.setItem(SYNC_KEY, syncCode); } catch (e) {}
+  try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {}
+  linkedJustNow = true;
+})();
+var linkedJustNow = linkedJustNow || false;
+function newCode() {
+  var abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789", out = "";
+  var bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  for (var i = 0; i < bytes.length; i++) out += abc.charAt(bytes[i] % abc.length);
+  return out;
+}
+function syncLink() {
+  return "https://claude28.web.app/?sync=" + syncCode;
+}
+function setSync(state) {
+  syncState = state;
+  if (typeof updateEditBar === "function" && view) updateEditBar();
+}
+var pushTimer = 0;
+function pushRemote() {
+  if (!syncCode) {
+    syncCode = newCode();
+    try { localStorage.setItem(SYNC_KEY, syncCode); } catch (e) {}
+  }
+  setSync("saving");
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(function () {
+    var urls = Object.keys(hidden).map(function (u) { return { stringValue: u }; });
+    fetch(DB + syncCode, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields: {
+        urls: { arrayValue: urls.length ? { values: urls } : {} },
+        updated: { timestampValue: new Date().toISOString() }
+      } })
+    }).then(function (r) { setSync(r.ok ? "saved" : "offline"); })
+      .catch(function () { setSync("offline"); });
+  }, 400);
+}
+// Fetch the online list and use it. Runs on load and whenever the page comes
+// back into view, so a removal made on the phone shows up on the laptop.
+function pullRemote() {
+  if (!syncCode) return;
+  fetch(DB + syncCode).then(function (r) {
+    if (r.status === 404) { if (Object.keys(hidden).length) pushRemote(); return null; }
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  }).then(function (doc) {
+    if (!doc) return;
+    var list = ((doc.fields && doc.fields.urls && doc.fields.urls.arrayValue.values) || [])
+      .map(function (v) { return v.stringValue; });
+    var before = Object.keys(hidden).sort().join("\n");
+    hidden = {};
+    list.forEach(function (u) { hidden[u] = true; });
+    try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(list)); } catch (e) {}
+    setSync("saved");
+    if (list.slice().sort().join("\n") !== before && view) show(view, true);
+    if (linkedJustNow) {
+      linkedJustNow = false;
+      say("This device is now linked: " + list.length + " site" + (list.length === 1 ? "" : "s") + " removed, same as your others", "ok");
+    }
+  }).catch(function () { setSync("offline"); });
+}
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") pullRemote();
+});
+document.getElementById("copylink").addEventListener("click", function () {
+  if (!syncCode) pushRemote();
+  var link = syncLink();
+  var done = function () { say("Link copied. Open it once on your other devices", "ok"); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(done, function () { prompt("Copy this link:", link); });
+  } else {
+    prompt("Copy this link:", link);
+  }
+});
 function hiddenIn(v) {
   var n = 0;
   v.groups.forEach(function (g) { g.sites.forEach(function (s) { if (hidden[s.url]) n++; }); });
@@ -1053,6 +1151,11 @@ function updateEditBar() {
   document.getElementById("editcount").textContent = n ? n + " removed from this list" : "nothing removed yet";
   document.getElementById("undo").disabled = !undoStack.length;
   document.getElementById("restore").disabled = !n;
+  var st = document.getElementById("syncstate");
+  st.textContent = syncState === "saving" ? "saving…"
+                 : syncState === "saved" ? "✓ saved for all your devices"
+                 : syncState === "offline" ? "offline — saved here, will sync later" : "";
+  st.className = syncState;
 }
 document.getElementById("editbtn").addEventListener("click", function (e) {
   setEditing(!editing);
@@ -1239,6 +1342,8 @@ function viewFromAddress() {
   return found;
 }
 show(viewFromAddress());
+// Removals made before syncing existed get put online now; otherwise fetch the online list.
+if (!syncCode && Object.keys(hidden).length) pushRemote(); else pullRemote();
 window.addEventListener("hashchange", function () {
   var want = viewFromAddress();
   if (want !== view) show(want);
