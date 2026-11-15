@@ -206,6 +206,64 @@
   .tile.sel { box-shadow: 0 0 0 1px var(--c); }
   .tile.go { border-color: var(--c); background: var(--tile-hi); box-shadow: 0 0 0 2px var(--c); }
   .tile.off { opacity: .14; }
+
+  /* ---------- edit mode: remove sites you do not want ---------- */
+  .editbtn {
+    flex: none;
+    appearance: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 14px;
+    background: var(--tile);
+    color: var(--dim);
+    font: 600 12.5px/1.3 var(--mono);
+    cursor: pointer;
+  }
+  .editbtn:hover { color: var(--text); border-color: var(--dim); }
+  .editbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .editbtn[aria-pressed="true"] { background: #f0839a; border-color: #f0839a; color: #0b0d10; }
+  .editbtn[hidden], .editbar[hidden] { display: none; }
+  .editbar {
+    flex: none;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    width: 100%; max-width: 1320px; margin: 0 auto;
+    padding: 9px 14px;
+    border: 1px solid rgba(240, 131, 154, .45);
+    border-radius: 12px;
+    background: rgba(240, 131, 154, .08);
+    font-size: 13.5px;
+  }
+  .editbar p { flex: 1; min-width: 200px; margin: 0; color: var(--dim); }
+  .editbar b { color: #f0839a; }
+  .editbar span { color: var(--faint); margin-left: 4px; }
+  .editbar button {
+    appearance: none;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px;
+    background: var(--tile); color: var(--text);
+    font: 600 12px/1.3 var(--mono);
+    cursor: pointer;
+  }
+  .editbar button:disabled { opacity: .35; cursor: default; }
+  .editbar button:not(:disabled):hover { border-color: var(--dim); }
+  /* every tile gets a remove badge, and turns red under the pointer */
+  .editing .tile::after {
+    content: "×";
+    position: absolute; top: 5px; right: 5px;
+    width: 20px; height: 20px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: rgba(240, 131, 154, .9);
+    color: #0b0d10;
+    font: 700 15px/1 var(--sans);
+  }
+  .editing .tile:hover, .editing .tile.sel, .editing .tile:focus-visible {
+    border-color: #f0839a; background: rgba(240, 131, 154, .12);
+  }
+  .editing .tile:hover .logo { opacity: .6; }
+  @media (prefers-reduced-motion: no-preference) {
+    .editing .tile:hover { transform: none; }
+  }
   @media (prefers-reduced-motion: no-preference) {
     .tile:hover { transform: translateY(-2px); }
   }
@@ -271,6 +329,8 @@
     .top { flex-wrap: wrap; gap: 8px 12px; }
     .views { order: 3; width: 100%; }
     .views button { flex: 1; padding: 7px 8px; }
+    .views { width: auto; flex: 1; }
+    .editbtn { order: 4; }
     .find input { font-size: 16px; }
     .groups { gap: clamp(6px, 1.4vh, 14px) 0; }
     .group { width: 100%; }
@@ -318,12 +378,19 @@
     <p id="tagline"></p>
   </div>
   <nav class="views" id="views" aria-label="Which list to show"></nav>
+  <button type="button" class="editbtn" id="editbtn" aria-pressed="false" hidden>edit</button>
   <label class="find">
     <span aria-hidden="true">/</span>
     <input id="q" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
            placeholder="search" aria-label="Search sites by name">
   </label>
 </header>
+
+<div class="editbar" id="editbar" hidden>
+  <p><b>Editing.</b> Click any site to remove it from this list. <span id="editcount"></span></p>
+  <button type="button" id="undo">undo</button>
+  <button type="button" id="restore">restore all</button>
+</div>
 
 <div class="stage" id="stage">
   <main class="groups" id="groups"></main>
@@ -930,22 +997,96 @@ function addTile(site, group, parent) {
   a.addEventListener("mouseleave", function () { describe(selected); tip(null); });
   a.addEventListener("focus",      function () { describe(row); tip(row); });
   a.addEventListener("blur",       function () { tip(null); });
-  a.addEventListener("click",      function () { say("Opened " + site.name + " in a new tab", "ok"); });
+  a.addEventListener("click", function (e) {
+    if (editing) {            // in edit mode a click removes the site instead of opening it
+      e.preventDefault();
+      removeSite(site);
+      return;
+    }
+    say("Opened " + site.name + " in a new tab", "ok");
+  });
 }
 
 var view = null;          // the list on screen now
 var viewButtons = [];
 
 // Empty the screen and draw one list: a labelled group per kind.
-function show(next) {
+// ---------- removing sites you do not want ----------
+// Only the two long lists can be edited. The addresses of removed sites are
+// kept in this browser, so they stay gone after a reload; "restore all"
+// brings them back. Nothing is changed on the server.
+var HIDDEN_KEY = "claude28.hidden";
+var hidden = {};
+try {
+  JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]").forEach(function (u) { hidden[u] = true; });
+} catch (e) {}
+var editing = false;
+var undoStack = [];
+function saveHidden() {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(Object.keys(hidden))); } catch (e) {}
+}
+function hiddenIn(v) {
+  var n = 0;
+  v.groups.forEach(function (g) { g.sites.forEach(function (s) { if (hidden[s.url]) n++; }); });
+  return n;
+}
+function removeSite(site) {
+  hidden[site.url] = true;
+  undoStack.push(site.url);
+  saveHidden();
+  show(view, true);
+  say("Removed " + site.name, "ok");
+}
+function setEditing(on) {
+  editing = on && view.long;
+  document.body.classList.toggle("editing", editing);
+  tip(null);
+  updateEditBar();
+}
+function updateEditBar() {
+  var btn = document.getElementById("editbtn");
+  btn.hidden = !view.long;
+  btn.textContent = editing ? "done" : "edit";
+  btn.setAttribute("aria-pressed", editing ? "true" : "false");
+  document.getElementById("editbar").hidden = !editing;
+  var n = hiddenIn(view);
+  document.getElementById("editcount").textContent = n ? n + " removed from this list" : "nothing removed yet";
+  document.getElementById("undo").disabled = !undoStack.length;
+  document.getElementById("restore").disabled = !n;
+}
+document.getElementById("editbtn").addEventListener("click", function (e) {
+  setEditing(!editing);
+  if (e.detail > 0) this.blur();
+});
+document.getElementById("undo").addEventListener("click", function () {
+  var url = undoStack.pop();
+  if (!url) return;
+  delete hidden[url];
+  saveHidden();
+  show(view, true);
+  say("Put back", "ok");
+});
+document.getElementById("restore").addEventListener("click", function () {
+  var n = hiddenIn(view);
+  view.groups.forEach(function (g) { g.sites.forEach(function (s) { delete hidden[s.url]; }); });
+  undoStack = [];
+  saveHidden();
+  show(view, true);
+  say("Brought back " + n + " site" + (n === 1 ? "" : "s"), "ok");
+});
+
+function show(next, keepPlace) {
+  var leaving = view !== next;
+  var place = stage.scrollTop;
   view = next;
   groupsEl.textContent = "";
   groupsEl.classList.toggle("long", view.long);
   rows = []; byKey = {}; selected = null;
-  input.value = "";
+  if (leaving) { input.value = ""; undoStack = []; editing = editing && view.long; }
   tip(null);
-  stage.scrollTop = 0;
   view.groups.forEach(function (group) {
+    var keep = view.long ? group.sites.filter(function (s) { return !hidden[s.url]; }) : group.sites;
+    if (!keep.length) return;            // every site in this group was removed
     var section = document.createElement("section");
     section.className = "group";
     section.style.setProperty("--c", group.colour);
@@ -956,9 +1097,12 @@ function show(next) {
     section.appendChild(heading);
     section.appendChild(tiles);
     groupsEl.appendChild(section);
-    group.sites.forEach(function (site) { addTile(site, group, tiles); });
+    keep.forEach(function (site) { addTile(site, group, tiles); });
   });
   document.getElementById("tagline").textContent = rows.length + view.tagline;
+  viewButtons.forEach(function (b) { b.count.textContent = countSites(b.view); });
+  document.body.classList.toggle("editing", editing);
+  updateEditBar();
   var lastKey = "";
   rows.forEach(function (r) { if (r.key) lastKey = r.key; });
   document.getElementById("lastkey").textContent = lastKey;
@@ -972,9 +1116,11 @@ function show(next) {
   }
   describe(null);
   fit();
+  if (keepPlace && !leaving && searching()) applyFilter();   // keep the search the person typed
+  stage.scrollTop = keepPlace && !leaving ? place : 0;
 }
 function countSites(v) {
-  return v.groups.reduce(function (n, g) { return n + g.sites.length; }, 0);
+  return v.groups.reduce(function (n, g) { return n + g.sites.length; }, 0) - (v.long ? hiddenIn(v) : 0);
 }
 VIEWS.forEach(function (v) {
   var b = document.createElement("button");
@@ -990,7 +1136,7 @@ VIEWS.forEach(function (v) {
     if (e.detail > 0) b.blur();
   });
   document.getElementById("views").appendChild(b);
-  viewButtons.push({ el: b, view: v });
+  viewButtons.push({ el: b, view: v, count: n });
 });
 function otherView() {
   show(VIEWS[(VIEWS.indexOf(view) + 1) % VIEWS.length]);
@@ -1112,6 +1258,7 @@ function select(row) {
 
 var flashTimer = 0;
 function openRow(row) {
+  if (editing) { removeSite(row.site); return; }
   var tab = window.open(row.site.url, "_blank");
   rows.forEach(function (r) { r.el.classList.remove("go"); });
   if (!tab) {
@@ -1194,6 +1341,7 @@ document.addEventListener("keydown", function (e) {
 
   if (e.key === "Escape") {
     e.preventDefault();
+    if (editing) setEditing(false);
     clearSearch();
     select(null);
     return;
